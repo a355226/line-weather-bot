@@ -1,21 +1,25 @@
 from flask import Flask, request, abort
 from linebot.v3.webhook import WebhookHandler
-from linebot.v3.messaging import Configuration, ApiClient, MessagingApi, ReplyMessageRequest, TextMessage
+from linebot.v3.messaging import Configuration, ApiClient, MessagingApi, PushMessageRequest, TextMessage
 from linebot.v3.webhooks import MessageEvent, TextMessageContent
+import requests
 import os
+from apscheduler.schedulers.background import BackgroundScheduler
 
-app = Flask(__name__)  # ← 一定要在最前面定義！
+# === 設定 ===
+app = Flask(__name__)
+
+channel_access_token = 'yRDHUt2i8Pg2uvOvPTVj9Mvg55FJYxPu562/d1JFcEOecGz3zbfn9pCJz9el41z1iSfdd0+pGDbGc82Ki++Y6WgiIrdBHb4l1TDo24fS85NIKkkrJVP2c9yk1BNOR08nvi5UlGb1ICaKcdjWIKlSxQdB04t89/1O/w1cDnyilFU='
+channel_secret = 'bf209d4d55be8865f7a5ba2522665811'
+cwb_api_key = 'CWA-A2775CB4-B52C-47CE-8943-9570AE61D448'
+locations = ['臺北市', '新北市']  # 支援多城市
+
+configuration = Configuration(access_token=channel_access_token)
+handler = WebhookHandler(channel_secret)
 
 @app.route("/", methods=['GET'])
 def home():
     return "Line Bot is running"
-
-# --- 以下是 webhook 與 bot 處理 ---
-channel_access_token = 'yRDHUt2i8Pg2uvOvPTVj9Mvg55FJYxPu562/d1JFcEOecGz3zbfn9pCJz9el41z1iSfdd0+pGDbGc82Ki++Y6WgiIrdBHb4l1TDo24fS85NIKkkrJVP2c9yk1BNOR08nvi5UlGb1ICaKcdjWIKlSxQdB04t89/1O/w1cDnyilFU='
-channel_secret = 'bf209d4d55be8865f7a5ba2522665811'
-
-configuration = Configuration(access_token=channel_access_token)
-handler = WebhookHandler(channel_secret)
 
 @app.route("/callback", methods=['POST'])
 def callback():
@@ -28,16 +32,74 @@ def callback():
         abort(400)
     return 'OK'
 
+# === 暫存 user_id
+user_ids = set()
+
 @handler.add(MessageEvent, message=TextMessageContent)
 def handle_message(event):
+    user_ids.add(event.source.user_id)
+    reply = "✅ 已登記，將於每天晚上21:00提醒【台北市+新北市】天氣"
     with ApiClient(configuration) as api_client:
         line_bot_api = MessagingApi(api_client)
-        reply_message = ReplyMessageRequest(
-            reply_token=event.reply_token,
-            messages=[TextMessage(text="你好，我是天氣小幫手！")]
+        line_bot_api.reply_message(
+            ReplyMessageRequest(
+                reply_token=event.reply_token,
+                messages=[TextMessage(text=reply)]
+            )
         )
-        line_bot_api.reply_message(reply_message)
+
+# === 取得單一地區天氣
+
+def get_weather(location):
+    url = f'https://opendata.cwa.gov.tw/api/v1/rest/datastore/F-C0032-001?Authorization={cwb_api_key}&locationName={location}'
+    res = requests.get(url)
+    data = res.json()
+    weather_elements = data['records']['location'][0]['weatherElement']
+    wx = weather_elements[0]['time'][0]['parameter']['parameterName']  # 天氣現象
+    pop = weather_elements[1]['time'][0]['parameter']['parameterName']  # 降雨機率
+    min_t = weather_elements[2]['time'][0]['parameter']['parameterName']  # 最低溫
+    max_t = weather_elements[4]['time'][0]['parameter']['parameterName']  # 最高溫
+
+    message = f"【{location}】\n天氣：{wx}\n氣溫：{min_t}°C - {max_t}°C\n降雨機率：{pop}%\n建議：{suggest(int(pop), int(min_t))}"
+    return message
+
+# === 天氣建議規則
+
+def suggest(pop, min_temp):
+    msg = []
+    if pop > 10:
+        msg.append("降雨機率超過 10%，記得帶傘 ☔")
+    if min_temp < 22:
+        msg.append("氣溫偏低，記得穿外套 🧥")
+    if not msg:
+        msg.append("天氣良好，無需特別準備 ☀")
+    return " ".join(msg)
+
+# === 自動推播任務
+
+def job():
+    messages = []
+    for loc in locations:
+        messages.append(get_weather(loc))
+    final_message = "\n\n".join(messages)
+    print("定時推播：\n" + final_message)
+
+    with ApiClient(configuration) as api_client:
+        line_bot_api = MessagingApi(api_client)
+        for uid in user_ids:
+            line_bot_api.push_message(
+                PushMessageRequest(
+                    to=uid,
+                    messages=[TextMessage(text=final_message)]
+                )
+            )
+
+# === 排程 每天21:00 推播 ===
+scheduler = BackgroundScheduler()
+scheduler.add_job(job, 'cron', hour=21, minute=0)
+scheduler.start()
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
+
