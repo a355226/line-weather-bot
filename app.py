@@ -1,6 +1,6 @@
 from flask import Flask, request, abort
 from linebot.v3.webhook import WebhookHandler
-from linebot.v3.messaging import Configuration, ApiClient, MessagingApi, PushMessageRequest, ReplyMessageRequest, TextMessage
+from linebot.v3.messaging import Configuration, ApiClient, MessagingApi, PushMessageRequest, ReplyMessageRequest, TextMessage, QuickReply, QuickReplyItem
 from linebot.v3.webhooks import MessageEvent, TextMessageContent
 import requests
 import os
@@ -8,14 +8,16 @@ from apscheduler.schedulers.background import BackgroundScheduler
 
 # === 設定 ===
 app = Flask(__name__)
-
 channel_access_token = 'yRDHUt2i8Pg2uvOvPTVj9Mvg55FJYxPu562/d1JFcEOecGz3zbfn9pCJz9el41z1iSfdd0+pGDbGc82Ki++Y6WgiIrdBHb4l1TDo24fS85NIKkkrJVP2c9yk1BNOR08nvi5UlGb1ICaKcdjWIKlSxQdB04t89/1O/w1cDnyilFU='
 channel_secret = 'bf209d4d55be8865f7a5ba2522665811'
 cwb_api_key = 'CWA-A2775CB4-B52C-47CE-8943-9570AE61D448'
-locations = ['臺北市', '新北市']
-
 configuration = Configuration(access_token=channel_access_token)
 handler = WebhookHandler(channel_secret)
+
+# === 暫存 ===
+user_ids = set()
+user_prefs = {}  # {user_id: '台北市'}
+default_push_locations = ['臺北市', '新北市']
 
 @app.route("/", methods=['GET'])
 def home():
@@ -32,25 +34,44 @@ def callback():
         abort(400)
     return 'OK'
 
-# === 暫存 user_id
-user_ids = set()
-
 @handler.add(MessageEvent, message=TextMessageContent)
 def handle_message(event):
-    user_ids.add(event.source.user_id)
+    uid = event.source.user_id
+    user_ids.add(uid)
     user_msg = event.message.text.strip()
 
+    reply = ""
+    quick = make_quick_reply()
+
     if user_msg == "天氣":
-        reply = get_today_tomorrow_weather()
+        loc = user_prefs.get(uid, None)
+        if loc:
+            reply = get_full_weather(loc)
+        else:
+            reply = "還沒設定常用地區喔！請輸入：設定常用：台北市"
+
+    elif user_msg.startswith("設定常用："):
+        area = user_msg.replace("設定常用：", "").strip()
+        if area:
+            user_prefs[uid] = area
+            reply = f"常用地區已設定為【{area}】！之後輸入「天氣」即可快速查詢。"
+        else:
+            reply = "設定失敗，請輸入：設定常用：地區名"
+
+    elif user_msg in get_all_locations():
+        reply = get_full_weather(user_msg)
+
     else:
         reply = (
-            "✅ 歡迎使用天氣提醒機器人 ☁\n"
+            "✅ 歡迎使用專業幽默氣象小幫手 ☁\n"
             "──────────────\n"
-            "🔔 功能介紹：\n"
-            "1️⃣ 每晚21:00 自動提醒 【台北市】 和 【新北市】 的明日天氣\n"
-            "2️⃣ 隨時輸入『天氣』，查詢今明兩天天氣\n"
+            "📌 功能說明：\n"
+            "1️⃣ 每日 12:00、21:00 自動推播雙北天氣\n"
+            "2️⃣ 輸入『天氣』快速查看常用地區\n"
+            "3️⃣ 輸入『台北市』、『大安區』或其他行政區名，直接查詢該地天氣\n"
+            "4️⃣ 輸入『設定常用：台中市』可指定常用地區\n"
             "──────────────\n"
-            "💡 試試輸入：天氣"
+            "💡 試試輸入：天氣、大安區 或 設定常用：台北市"
         )
 
     with ApiClient(configuration) as api_client:
@@ -58,73 +79,20 @@ def handle_message(event):
         line_bot_api.reply_message(
             ReplyMessageRequest(
                 reply_token=event.reply_token,
-                messages=[TextMessage(text=reply)]
+                messages=[TextMessage(text=reply, quick_reply=quick)]
             )
         )
 
-# === 查詢今明天氣
+# === Quick Reply ===
+def make_quick_reply():
+    return QuickReply(items=[
+        QuickReplyItem(action={'type': 'message', 'label': '台北市', 'text': '台北市'}),
+        QuickReplyItem(action={'type': 'message', 'label': '新北市', 'text': '新北市'}),
+        QuickReplyItem(action={'type': 'message', 'label': '我的常用', 'text': '天氣'}),
+        QuickReplyItem(action={'type': 'message', 'label': '設定常用', 'text': '設定常用：'})
+    ])
 
-def get_today_tomorrow_weather():
-    msgs = []
-    for loc in locations:
-        msgs.append(get_weather(loc, 0))  # 今日
-        msgs.append(get_weather(loc, 1))  # 明日
-    return "\n\n".join(msgs)
-
-# === 取得天氣
-
-def get_weather(location, day_index):
-    url = f'https://opendata.cwa.gov.tw/api/v1/rest/datastore/F-C0032-001?Authorization={cwb_api_key}&locationName={location}'
-    res = requests.get(url)
-    data = res.json()
-    weather_elements = data['records']['location'][0]['weatherElement']
-
-    wx = weather_elements[0]['time'][day_index]['parameter']['parameterName']
-    pop = weather_elements[1]['time'][day_index]['parameter']['parameterName']
-    min_t = weather_elements[2]['time'][day_index]['parameter']['parameterName']
-    max_t = weather_elements[4]['time'][day_index]['parameter']['parameterName']
-
-    day = "今日" if day_index == 0 else "明日"
-
-    message = f"【{location} {day}】\n天氣：{wx}\n氣溫：{min_t}°C - {max_t}°C\n降雨機率：{pop}%\n建議：{suggest(int(pop), int(min_t))}"
-    return message
-
-# === 建議文字
-
-def suggest(pop, min_temp):
-    msg = []
-    if pop > 10:
-        msg.append("降雨機率超過 10%，記得帶傘 ☔")
-    if min_temp < 22:
-        msg.append("氣溫偏低，記得穿外套 🧥")
-    if not msg:
-        msg.append("天氣良好，無需特別準備 ☀")
-    return " ".join(msg)
-
-# === 定時推播 ===
-
-def job():
-    messages = []
-    for loc in locations:
-        messages.append(get_weather(loc, 1))
-    final_message = "\n\n".join(messages)
-    print("定時推播：\n" + final_message)
-
-    with ApiClient(configuration) as api_client:
-        line_bot_api = MessagingApi(api_client)
-        for uid in user_ids:
-            line_bot_api.push_message(
-                PushMessageRequest(
-                    to=uid,
-                    messages=[TextMessage(text=final_message)]
-                )
-            )
-
-# === 排程 每天21:00 ===
-scheduler = BackgroundScheduler()
-scheduler.add_job(job, 'cron', hour=21, minute=0)
-scheduler.start()
-
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host="0.0.0.0", port=port)
+# === 查詢今明天氣 ===
+def get_full_weather(location):
+    try:
+        res = requests.get(f'https://opendata.cwa.gov.tw/api/v1/rest/datastore/F-C0032-001?Authorization
