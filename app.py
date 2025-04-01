@@ -93,7 +93,7 @@ def make_quick_reply():
     ])
 
 # === 查詢今明天氣 ===
-def get_weather(location):
+def get_full_weather(location):
     try:
         res = requests.get(f'https://opendata.cwa.gov.tw/api/v1/rest/datastore/F-C0032-001?Authorization={cwb_api_key}&locationName={location}')
         data = res.json()
