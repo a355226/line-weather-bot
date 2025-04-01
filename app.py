@@ -95,4 +95,20 @@ def make_quick_reply():
 # === 查詢今明天氣 ===
 def get_full_weather(location):
     try:
+    res = requests.get(f'https://opendata.cwa.gov.tw/api/v1/rest/datastore/F-C0032-001?Authorization={CWA-A2775CB4-B52C-47CE-8943-9570AE61D448}&locationName={location}')
+    data = res.json()
+    weather_elements = data['records']['location'][0]['weatherElement']
+
+    msg = []
+    for i, label in zip([0, 1, 2, 3], ['今日白天', '今晚', '明日白天', '明晚']):
+        wx = weather_elements[0]['time'][i]['parameter']['parameterName']
+        pop = int(weather_elements[1]['time'][i]['parameter']['parameterName'])
+        min_t = int(weather_elements[2]['time'][i]['parameter']['parameterName'])
+        max_t = int(weather_elements[4]['time'][i]['parameter']['parameterName'])
+        msg.append(f"【{location} {label}】\n天氣：{wx}  氣溫：{min_t}-{max_t}°C  降雨：{pop}%\n{build_suggestion(pop, min_t)}")
+    return "\n\n".join(msg)
+
+except Exception as e:
+    print("天氣資料錯誤：", e)
+    return "找不到該地區資料，請確認輸入的地名是否正確。"
         res = requests.get(f'https://opendata.cwa.gov.tw/api/v1/rest/datastore/F-C0032-001?Authorization')
