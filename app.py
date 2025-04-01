@@ -83,7 +83,6 @@ def handle_message(event):
             )
         )
 
-# === Quick Reply ===
 def make_quick_reply():
     return QuickReply(items=[
         QuickReplyItem(action={'type': 'message', 'label': '台北市', 'text': '台北市'}),
@@ -92,10 +91,9 @@ def make_quick_reply():
         QuickReplyItem(action={'type': 'message', 'label': '設定常用', 'text': '設定常用：'})
     ])
 
-# === 查詢今明天氣 ===
 def get_weather(location):
     try:
-        res = requests.get(f'https://opendata.cwa.gov.tw/api/v1/rest/datastore/F-C0032-001?Authorization=CWA-A2775CB4-B52C-47CE-8943-9570AE61D448&locationName={location}')
+        res = requests.get(f'https://opendata.cwa.gov.tw/api/v1/rest/datastore/F-C0032-001?Authorization={cwb_api_key}&locationName={location}')
         data = res.json()
         weather_elements = data['records']['location'][0]['weatherElement']
 
@@ -111,6 +109,36 @@ def get_weather(location):
     except Exception as e:
         print("天氣資料錯誤：", e)
         return "找不到該地區資料，請確認輸入的地名是否正確。"
+
+def get_full_weather(location):
+    return get_weather(location)
+
+def build_suggestion(pop, min_t):
+    suggestion = ""
+    if pop > 10:
+        suggestion += "記得帶傘 ☂\n"
+    if min_t < 22:
+        suggestion += "天氣涼，記得穿外套 🧥\n"
+    if suggestion == "":
+        suggestion = "天氣穩定，輕鬆出門！"
+    return suggestion
+
+def get_all_locations():
+    return ['臺北市', '新北市', '桃園市', '台中市', '台南市', '高雄市', '大安區', '中正區', '信義區', '板橋區', '新店區']
+
+def job():
+    with ApiClient(configuration) as api_client:
+        line_bot_api = MessagingApi(api_client)
+        for user_id in user_ids:
+            for loc in default_push_locations:
+                msg = get_full_weather(loc)
+                line_bot_api.push_message(PushMessageRequest(to=user_id, messages=[TextMessage(text=msg)]))
+
+scheduler = BackgroundScheduler()
+scheduler.add_job(job, 'cron', hour=21, minute=0)
+scheduler.add_job(job, 'cron', hour=12, minute=0)
+scheduler.start()
+
 if __name__ == "__main__":
     port = int(os.environ.get('PORT', 10000))
     app.run(host="0.0.0.0", port=port)
