@@ -110,4 +110,4 @@ def get_weather(location):
 
     except Exception as e:
         print("天氣資料錯誤：", e)
-        return "找不到該地區資料，請確認輸入的地名是否正確。
+        return "找不到該地區資料，請確認輸入的地名是否正確。"
