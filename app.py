@@ -43,7 +43,15 @@ def handle_message(event):
     if user_msg == "天氣":
         reply = get_today_tomorrow_weather()
     else:
-        reply = "✅ 已登記，將於每天晚上21:00提醒【台北市+新北市】天氣。輸入「天氣」可查詢今明兩天天氣。"
+        reply = (
+            "✅ 歡迎使用天氣提醒機器人 ☁\n"
+            "──────────────\n"
+            "🔔 功能介紹：\n"
+            "1️⃣ 每晚21:00 自動提醒 【台北市】 和 【新北市】 的明日天氣\n"
+            "2️⃣ 隨時輸入『天氣』，查詢今明兩天天氣\n"
+            "──────────────\n"
+            "💡 試試輸入：天氣"
+        )
 
     with ApiClient(configuration) as api_client:
         line_bot_api = MessagingApi(api_client)
@@ -71,10 +79,10 @@ def get_weather(location, day_index):
     data = res.json()
     weather_elements = data['records']['location'][0]['weatherElement']
 
-    wx = weather_elements[0]['time'][day_index]['parameter']['parameterName']  # 天氣現象
-    pop = weather_elements[1]['time'][day_index]['parameter']['parameterName']  # 降雨機率
-    min_t = weather_elements[2]['time'][day_index]['parameter']['parameterName']  # 最低溫
-    max_t = weather_elements[4]['time'][day_index]['parameter']['parameterName']  # 最高溫
+    wx = weather_elements[0]['time'][day_index]['parameter']['parameterName']
+    pop = weather_elements[1]['time'][day_index]['parameter']['parameterName']
+    min_t = weather_elements[2]['time'][day_index]['parameter']['parameterName']
+    max_t = weather_elements[4]['time'][day_index]['parameter']['parameterName']
 
     day = "今日" if day_index == 0 else "明日"
 
@@ -98,7 +106,7 @@ def suggest(pop, min_temp):
 def job():
     messages = []
     for loc in locations:
-        messages.append(get_weather(loc, 1))  # 明日天氣
+        messages.append(get_weather(loc, 1))
     final_message = "\n\n".join(messages)
     print("定時推播：\n" + final_message)
 
