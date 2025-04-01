@@ -1,3 +1,6 @@
+@app.route("/", methods=['GET'])
+def home():
+    return "Line Bot is running"
 from flask import Flask, request, abort
 from linebot.v3 import (
     WebhookHandler
