@@ -48,7 +48,8 @@ def handle_message(event):
             "──────────────\n"
             "🔔 功能介紹：\n"
             "1️⃣ 每晚21:00 自動提醒 【台北市】 和 【新北市】 的明日天氣\n"
-            "2️⃣ 隨時輸入『天氣』，查詢今明兩天天氣\n"
+            "2️⃣ 每日中午12:00 自動提醒今明天氣\n"
+            "3️⃣ 隨時輸入『天氣』，查詢今明兩天天氣\n"
             "──────────────\n"
             "💡 試試輸入：天氣"
         )
@@ -101,14 +102,14 @@ def suggest(pop, min_temp):
         msg.append("天氣良好，無需特別準備 ☀")
     return " ".join(msg)
 
-# === 定時推播 ===
+# === 晚上21:00定時推播 ===
 
-def job():
+def job_night():
     messages = []
     for loc in locations:
         messages.append(get_weather(loc, 1))
     final_message = "\n\n".join(messages)
-    print("定時推播：\n" + final_message)
+    print("21:00 定時推播：\n" + final_message)
 
     with ApiClient(configuration) as api_client:
         line_bot_api = MessagingApi(api_client)
@@ -120,9 +121,30 @@ def job():
                 )
             )
 
-# === 排程 每天21:00 ===
+# === 中午12:00定時推播 ===
+
+def job_noon():
+    messages = []
+    for loc in locations:
+        messages.append(get_weather(loc, 0))  # 今日
+        messages.append(get_weather(loc, 1))  # 明日
+    final_message = "\n\n".join(messages)
+    print("12:00 定時推播：\n" + final_message)
+
+    with ApiClient(configuration) as api_client:
+        line_bot_api = MessagingApi(api_client)
+        for uid in user_ids:
+            line_bot_api.push_message(
+                PushMessageRequest(
+                    to=uid,
+                    messages=[TextMessage(text=final_message)]
+                )
+            )
+
+# === 排程 ===
 scheduler = BackgroundScheduler()
-scheduler.add_job(job, 'cron', hour=21, minute=0)
+scheduler.add_job(job_night, 'cron', hour=21, minute=0)  # 晚上21:00
+scheduler.add_job(job_noon, 'cron', hour=12, minute=0)   # 中午12:00
 scheduler.start()
 
 if __name__ == "__main__":
