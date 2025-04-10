@@ -8,7 +8,6 @@ app = Flask(__name__)
 
 channel_access_token = 'yRDHUt2i8Pg2uvOvPTVj9Mvg55FJYxPu562/d1JFcEOecGz3zbfn9pCJz9el41z1iSfdd0+pGDbGc82Ki++Y6WgiIrdBHb4l1TDo24fS85NIKkkrJVP2c9yk1BNOR08nvi5UlGb1ICaKcdjWIKlSxQdB04t89/1O/w1cDnyilFU='
 channel_secret = 'bf209d4d55be8865f7a5ba2522665811'
-
 configuration = Configuration(access_token=channel_access_token)
 handler = WebhookHandler(channel_secret)
 
@@ -30,6 +29,8 @@ def callback():
 @handler.add(MessageEvent, message=TextMessageContent)
 def handle_message(event):
     user_msg = event.message.text.strip()
+    print("收到來自用戶：", event.source.user_id)  # ✅ 顯示 User ID
+
     if user_msg == "天氣":
         reply = "🌤 今明天氣查詢請稍候使用 Background Worker 提供的推播資訊喔！"
     else:
@@ -42,6 +43,7 @@ def handle_message(event):
             "──────────────\n"
             "💡 試試輸入：天氣"
         )
+
     with ApiClient(configuration) as api_client:
         MessagingApi(api_client).reply_message(
             ReplyMessageRequest(
