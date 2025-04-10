@@ -1,8 +1,16 @@
 services:
-  - type: background
-    name: line-weather-bot-worker
+  - type: web
+    name: line-weather-web
     env: python
     plan: free
-    branch: main
-    buildCommand: "pip install -r requirements.txt"
-    startCommand: "python app.py"
+    buildCommand: pip install -r requirements.txt
+    startCommand: python app_web.py
+    autoDeploy: true
+
+  - type: background
+    name: line-weather-worker
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: python app_worker.py
+    autoDeploy: true
