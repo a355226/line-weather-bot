@@ -41,4 +41,4 @@ def push_weather():
 
 scheduler = BlockingScheduler()
 scheduler.add_job(push_weather, 'cron', hour=12, minute=0)
-scheduler.add_job(push_weather, 'cron', hour=21, minute=0)
+scheduler.add_job(push_weather, 'cron', hour=22, minute=35)
