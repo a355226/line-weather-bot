@@ -29,7 +29,7 @@ def callback():
 @handler.add(MessageEvent, message=TextMessageContent)
 def handle_message(event):
     user_msg = event.message.text.strip()
-    print("收到來自用戶：", event.source.user_id)  # ✅ 顯示 User ID
+    print("✅ 收到訊息：「{}」來自用戶 ID：{}".format(user_msg, event.source.user_id))  # ✅ 顯示 user_id
 
     if user_msg == "天氣":
         reply = "🌤 今明天氣查詢請稍候使用 Background Worker 提供的推播資訊喔！"
