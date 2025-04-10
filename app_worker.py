@@ -52,5 +52,5 @@ def push_weather():
 scheduler = BlockingScheduler()
 scheduler.add_job(push_weather, 'cron', hour=12, minute=0)   # 中午 12 點
 scheduler.add_job(push_weather, 'cron', hour=21, minute=0)   # 晚上 9 點
-scheduler.add_job(push_weather, 'cron', hour=24, minute=0)   # 晚上 12 點
+scheduler.add_job(push_weather, 'cron', hour=0, minute=10)   # 晚上 12 點
 scheduler.start()
