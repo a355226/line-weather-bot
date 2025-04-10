@@ -29,9 +29,11 @@ def callback():
 @handler.add(MessageEvent, message=TextMessageContent)
 def handle_message(event):
     user_msg = event.message.text.strip()
-    print("✅ 收到訊息：「{}」來自用戶 ID：{}".format(user_msg, event.source.user_id))  # ✅ 顯示 user_id
+    print("收到來自用戶：", event.source.user_id)  # ✅ 顯示 User ID
 
-    if user_msg == "天氣":
+    if user_msg == "我的ID":
+        reply = f"✅ 你的 User ID 是：\n{event.source.user_id}"
+    elif user_msg == "天氣":
         reply = "🌤 今明天氣查詢請稍候使用 Background Worker 提供的推播資訊喔！"
     else:
         reply = (
@@ -40,8 +42,9 @@ def handle_message(event):
             "🔔 功能介紹：\n"
             "1️⃣ 每天 12:00 和 21:00 自動推播今明天氣\n"
             "2️⃣ 輸入『天氣』查看基本提示（定期推播中）\n"
+            "3️⃣ 輸入『我的ID』可取得你的 LINE 使用者 ID\n"
             "──────────────\n"
-            "💡 試試輸入：天氣"
+            "💡 試試輸入：天氣、我的ID"
         )
 
     with ApiClient(configuration) as api_client:
