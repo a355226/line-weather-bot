@@ -5,6 +5,7 @@ from linebot.v3.webhooks import MessageEvent, TextMessageContent
 import requests
 import os
 from datetime import datetime, timedelta
+import json
 
 # === 設定 ===
 app = Flask(__name__)
