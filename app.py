@@ -114,7 +114,7 @@ def get_week_summary():
     data = response.json()
 
     # ✅ 真正正確格式（locationName=大安區）
-    elements = data['records']['locations'][0]['location'][0]['weatherElement']
+    elements = data['records']['Locations'][0]['location'][0]['weatherElement']
 
     days = len(elements[0]['time'])
     min_temps = [int(elements[8]['time'][i]['elementValue'][0]['value']) for i in range(days)]
