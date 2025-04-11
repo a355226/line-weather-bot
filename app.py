@@ -84,7 +84,7 @@ def get_week_summary():
         print("🔍 [Debug] 呼叫中央氣象局 API 取得台北市 12 區一週資料")
         url = f"https://opendata.cwa.gov.tw/api/v1/rest/datastore/F-D0047-063?Authorization={cwa_api_key}&locationName=臺北市"
         data = requests.get(url).json()
-        locations_data = data['records']['locations'][0]['location']
+        locations_data = data['records']['location']
 
         days = len(locations_data[0]['weatherElement'][0]['time'])  # 通常是 7 天
 
