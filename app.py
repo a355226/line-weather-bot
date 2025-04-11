@@ -83,42 +83,36 @@ def handle_message(event):
 
 def get_today_tomorrow_weather():
     print("🚀 進入 get_today_tomorrow_weather()")
+    loc = "臺北市"
+    data = fetch_weather_data(loc)
+
+    elements = data['records']['location'][0]['weatherElement']
+    times = elements[0]['time']  # 時段資料
     msg = "【雙北地區】\n"
-    location = "臺北市"
-    print(f"📍 處理地區：{location}")
-    data = fetch_weather_data(location)
 
-    times = data['records']['location'][0]['weatherElement'][0]['time']
-    all_datetimes = [t['startTime'] for t in times]
-    print("🕒 [Debug] 全部時間欄位：", all_datetimes)
+    def format_datetime_segment(start_str, end_str):
+        start = datetime.fromisoformat(start_str.replace("Z", "").split("+")[0])
+        end = datetime.fromisoformat(end_str.replace("Z", "").split("+")[0])
+        roc_year = start.year - 1911
+        date_part = f"{roc_year}/{start.month:02}/{start.day:02}"
+        weekday_map = ["一", "二", "三", "四", "五", "六", "日"]
+        weekday = weekday_map[start.weekday()]
+        time_range = f"{start.strftime('%H:%M')}~{end.strftime('%H:%M')}"
+        return f"{date_part}（{weekday}）{time_range}"
 
-    today = datetime.now().date()
-    tomorrow = today + timedelta(days=1)
-    today_str = today.strftime("%Y-%m-%d")
-    tomorrow_str = tomorrow.strftime("%Y-%m-%d")
+    # 抓出前三筆時間段資料
+    for i in range(min(3, len(times))):
+        t = times[i]
+        label = format_datetime_segment(t['startTime'], t['endTime'])
+        wx = t['parameter']['parameterName']
+        pop = int(elements[1]['time'][i]['parameter']['parameterName'])
+        min_t = int(elements[2]['time'][i]['parameter']['parameterName'])
+        max_t = int(elements[4]['time'][i]['parameter']['parameterName'])
+        suggest = build_suggestion(pop, min_t)
 
-    for target_date, label in [(today_str, "今日"), (tomorrow_str, "明日")]:
-        found = False
-        for i, t in enumerate(times):
-            start = t['startTime'][:10]
-            if start == target_date:
-                wx = data['records']['location'][0]['weatherElement'][0]['time'][i]['parameter']['parameterName']
-                pop = int(data['records']['location'][0]['weatherElement'][1]['time'][i]['parameter']['parameterName'])
-                min_t = int(data['records']['location'][0]['weatherElement'][2]['time'][i]['parameter']['parameterName'])
-                max_t = int(data['records']['location'][0]['weatherElement'][4]['time'][i]['parameter']['parameterName'])
-                date = parse_civil_date(t['startTime'])
-                suggest = build_suggestion(pop, min_t)
-                msg += f"{label}（{date}）\n☁ 天氣：{wx}\n🌡 氣溫：{min_t}-{max_t}°C\n☔ 降雨：{pop}%\n🧾 建議：{suggest}\n\n"
-                found = True
-                break
-        if not found:
-            if label == "明日":
-                msg += f"{label}：⚠️ 預報尚未更新，凌晨 6 點後再查詢 🌙\n\n"
-            else:
-                msg += f"{label}：⚠️ 無法正確取得預報資料。\n\n"
+        msg += f"\n🕒 {label}\n☁ 天氣：{wx}\n🌡 氣溫：{min_t}-{max_t}°C\n☔ 降雨：{pop}%\n🧾 建議：{suggest}\n"
 
     return msg.strip()
-
 
     
 def find_index_by_date(times, target_date):
