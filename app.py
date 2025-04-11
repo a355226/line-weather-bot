@@ -127,7 +127,7 @@ def get_week_summary():
 
     try:
         wx_index = element_names.index('天氣現象')
-        pop_index = element_names.index('降雨機率')
+        pop_index = element_names.index('12小時降雨機率')
         min_index = element_names.index('最低溫度')
         max_index = element_names.index('最高溫度')
     except ValueError as e:
