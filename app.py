@@ -112,7 +112,7 @@ def get_week_summary():
     response = requests.get(url)
     print(f"📦 [API] 回應狀態碼：{response.status_code}")
     data = response.json()
-
+    print("📄 [Debug] 氣象局資料：", json.dumps(data, indent=2, ensure_ascii=False))
     # ✅ 真正正確格式（locationName=大安區）
     elements = data['records']['Locations'][0]['location'][0]['weatherElement']
 
