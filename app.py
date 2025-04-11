@@ -24,15 +24,18 @@ def home():
 def callback():
     signature = request.headers['X-Line-Signature']
     body = request.get_data(as_text=True)
-    try:
-        handler.handle(body, signature)
-    except Exception as e:
-        print("❌ [Webhook Error]", e)
-        abort(400)
+try:
+    handler.handle(body, signature)
+except Exception as e:
+    print("❌ [Webhook Exception]", e)
+    print("📦 [Webhook Raw Body]：", body)
+    abort(400)
     return 'OK'
 
 @handler.add(MessageEvent, message=TextMessageContent)
 def handle_message(event):
+    print("🟢 [Webhook Triggered] 收到來自 LINE 的訊息事件")
+    ...
     user_msg = event.message.text.strip()
 
     if user_msg == "天氣":
