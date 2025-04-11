@@ -86,46 +86,59 @@ def get_today_tomorrow_weather():
     today = datetime.now().date()
     tomorrow = today + timedelta(days=1)
 
-    def find_index_by_date(times, target_date):
-        for i, t in enumerate(times):
-            try:
-                dt = parser.isoparse(t['startTime']).date()
-                if dt == target_date:
-                    return i
-            except:
-                continue
-        return None
-
     for loc in locations:
         try:
             data = fetch_weather_data(loc)
+            weather_elements = data['records']['location'][0]['weatherElement']
+            times = weather_elements[0]['time']  # 用第一個欄位的時間作基準
+            print(f"📆 [{loc}] 預報時間區段：", [t['startTime'] for t in times])
+
+            today_idx = find_index_by_date(times, today)
+            tomorrow_idx = find_index_by_date(times, tomorrow)
+
             msg += f"【{loc}】\n"
-            elements = data['records']['location'][0]['weatherElement']
-            times = elements[0]['time']
 
-            today_index = find_index_by_date(times, today)
-            tomorrow_index = find_index_by_date(times, tomorrow)
-
-            for idx, label in zip([today_index, tomorrow_index], ["今日", "明日"]):
-                if idx is None:
-                    msg += f"{label}：⚠️ 無法正確取得預報資料。\n\n"
-                    continue
-
-                time_data = elements[0]['time'][idx]
-                date = parse_civil_date(time_data['startTime'])
-                wx = elements[0]['time'][idx]['parameter']['parameterName']
-                pop = int(elements[1]['time'][idx]['parameter']['parameterName'])
-                min_t = int(elements[2]['time'][idx]['parameter']['parameterName'])
-                max_t = int(elements[4]['time'][idx]['parameter']['parameterName'])
+            # 處理今日預報
+            if today_idx is not None:
+                start_time = weather_elements[0]['time'][today_idx]['startTime']
+                date = parse_civil_date(start_time)
+                wx = weather_elements[0]['time'][today_idx]['parameter']['parameterName']
+                pop = int(weather_elements[1]['time'][today_idx]['parameter']['parameterName'])
+                min_t = int(weather_elements[2]['time'][today_idx]['parameter']['parameterName'])
+                max_t = int(weather_elements[4]['time'][today_idx]['parameter']['parameterName'])
                 suggest = build_suggestion(pop, min_t)
+                msg += f"今日（{date}）\n☁ 天氣：{wx}\n🌡 氣溫：{min_t}-{max_t}°C\n☔ 降雨：{pop}%\n🧾 建議：{suggest}\n\n"
+            else:
+                msg += "今日：⚠️ 無法正確取得預報資料。\n\n"
 
-                msg += f"{label}（{date}）\n☁ 天氣：{wx}\n🌡 氣溫：{min_t}-{max_t}°C\n☔ 降雨：{pop}%\n🧾 建議：{suggest}\n\n"
+            # 處理明日預報
+            if tomorrow_idx is not None:
+                start_time = weather_elements[0]['time'][tomorrow_idx]['startTime']
+                date = parse_civil_date(start_time)
+                wx = weather_elements[0]['time'][tomorrow_idx]['parameter']['parameterName']
+                pop = int(weather_elements[1]['time'][tomorrow_idx]['parameter']['parameterName'])
+                min_t = int(weather_elements[2]['time'][tomorrow_idx]['parameter']['parameterName'])
+                max_t = int(weather_elements[4]['time'][tomorrow_idx]['parameter']['parameterName'])
+                suggest = build_suggestion(pop, min_t)
+                msg += f"明日（{date}）\n☁ 天氣：{wx}\n🌡 氣溫：{min_t}-{max_t}°C\n☔ 降雨：{pop}%\n🧾 建議：{suggest}\n\n"
+            else:
+                msg += "明日：⚠️ 無法正確取得預報資料。\n\n"
+
         except Exception as e:
-            print(f"❌ [Error] get_today_tomorrow_weather() for {loc}：", str(e))
+            print(f"❌ [{loc}] 抓取失敗：", str(e))
             msg += f"【{loc}】\n⚠️ 無法正確取得今日與明日的預報資料。\n\n"
 
     return msg.strip()
-
+    
+def find_index_by_date(times, target_date):
+    for i, t in enumerate(times):
+        try:
+            dt = parser.isoparse(t['startTime'])
+            if abs((dt.date() - target_date).days) == 0:
+                return i
+        except:
+            continue
+    return None
 
 def get_week_summary():
     url = f"https://opendata.cwa.gov.tw/api/v1/rest/datastore/F-D0047-063?Authorization={cwa_api_key}&locationName=臺北市"
