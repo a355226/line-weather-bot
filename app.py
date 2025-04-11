@@ -40,6 +40,10 @@ def callback():
 @handler.add(MessageEvent, message=TextMessageContent)
 def handle_message(event):
     try:
+        if getattr(event, "delivery_context", None) and event.delivery_context.is_redelivery:
+            print("⚠️ [Redelivery] 舊訊息重送，不處理 reply")
+            return
+
         print("🟢 [Webhook Triggered] 收到來自 LINE 的訊息事件")
         user_msg = event.message.text.strip()
 
@@ -88,10 +92,9 @@ def get_today_tomorrow_weather():
     for loc in locations:
         data = fetch_weather_data(loc)
         msg += f"【{loc}】\n"
-        for i in [0, 1]:
+        for i, label in zip([0, 2], ["今日", "明日"]):
             time_data = data['records']['location'][0]['weatherElement'][0]['time'][i]
             start_time = time_data['startTime']
-            label = "今日" if i == 0 else "明日"
             date = parse_civil_date(start_time)
             wx = time_data['parameter']['parameterName']
             pop = int(data['records']['location'][0]['weatherElement'][1]['time'][i]['parameter']['parameterName'])
@@ -103,14 +106,11 @@ def get_today_tomorrow_weather():
 
 def get_week_summary():
     print("🔍 [Debug] 呼叫中央氣象局 API 取得台北市 12 區一週資料")
-
-    # ✅ 已填入 API 金鑰（f-string）
     url = f"https://opendata.cwa.gov.tw/api/v1/rest/datastore/F-D0047-063?Authorization={cwa_api_key}&locationName=臺北市"
-
     response = requests.get(url)
     print(f"📦 [API] 回應狀態碼：{response.status_code}")
     data = response.json()
-    locations_data = data['records']['locations'][0]['location']
+    locations_data = data['records']['location']
 
     days = len(locations_data[0]['weatherElement'][0]['time'])
     avg_min = [0] * days
