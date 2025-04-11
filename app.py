@@ -4,7 +4,7 @@ from linebot.v3.messaging import Configuration, ApiClient, MessagingApi, ReplyMe
 from linebot.v3.webhooks import MessageEvent, TextMessageContent
 import requests
 import os
-import datetime
+from datetime import datetime, timedelta
 
 # === 設定 ===
 app = Flask(__name__)
@@ -32,19 +32,23 @@ def callback():
         abort(400)
     return 'OK'
 
+# === 暫存 user_id ===
+user_ids = set()
+
 @handler.add(MessageEvent, message=TextMessageContent)
 def handle_message(event):
+    user_ids.add(event.source.user_id)
     user_msg = event.message.text.strip()
 
     if user_msg == "天氣":
-        reply = get_today_tomorrow_weather()
+        reply = get_all_weather()
     else:
         reply = (
             "✅ 歡迎使用天氣提醒機器人 ☁\n"
             "──────────────\n"
             "🔔 功能介紹：\n"
-            "1️⃣ 輸入『天氣』查詢今明兩天台北與新北的天氣\n"
-            "2️⃣ 查詢結果可能需要稍候 1-2 分鐘喔\n"
+            "1️⃣ 輸入『天氣』，查詢台北與新北的今明天氣與本週天氣概況\n"
+            "💡 查詢後請稍候約 1~2 分鐘，資料會自動回覆\n"
             "──────────────\n"
             "💡 試試輸入：天氣"
         )
@@ -58,45 +62,95 @@ def handle_message(event):
             )
         )
 
-# === 查詢今明天氣 ===
-def get_today_tomorrow_weather():
-    msgs = ["✅ 你的天氣預報來囉～\n（以下為民國日期）"]
+# === 主功能：回傳完整資訊 ===
+def get_all_weather():
+    result = []
     for loc in locations:
-        msgs.append(f"\n【{loc}】")
-        msgs.append(get_weather(loc, 0))  # 今日
-        msgs.append(get_weather(loc, 1))  # 明日
-    return "\n\n".join(msgs)
+        result.append(get_weather(loc, 0))  # 今日
+        result.append(get_weather(loc, 1))  # 明日
+    result.append(get_weekly_summary())
+    return "\n\n".join(result)
 
-# === 取得天氣資料 ===
+# === 查詢單日天氣（含建議） ===
 def get_weather(location, day_index):
-    url = f'https://opendata.cwa.gov.tw/api/v1/rest/datastore/F-C0032-001?Authorization={cwb_api_key}&locationName={location}'
-    res = requests.get(url)
-    data = res.json()
-    weather_elements = data['records']['location'][0]['weatherElement']
+    try:
+        url = f'https://opendata.cwa.gov.tw/api/v1/rest/datastore/F-C0032-001?Authorization={cwb_api_key}&locationName={location}'
+        res = requests.get(url)
+        data = res.json()
+        weather_elements = data['records']['location'][0]['weatherElement']
 
-    wx = weather_elements[0]['time'][day_index]['parameter']['parameterName']
-    pop = int(weather_elements[1]['time'][day_index]['parameter']['parameterName'])
-    min_t = int(weather_elements[2]['time'][day_index]['parameter']['parameterName'])
-    max_t = int(weather_elements[4]['time'][day_index]['parameter']['parameterName'])
+        wx = weather_elements[0]['time'][day_index]['parameter']['parameterName']
+        pop = int(weather_elements[1]['time'][day_index]['parameter']['parameterName'])
+        min_t = int(weather_elements[2]['time'][day_index]['parameter']['parameterName'])
+        max_t = int(weather_elements[4]['time'][day_index]['parameter']['parameterName'])
 
-    today = datetime.datetime.today()
-    target_date = today + datetime.timedelta(days=day_index)
-    roc_date = f"{target_date.year - 1911}/{target_date.month}/{target_date.day}"
+        base_date = datetime.now() + timedelta(days=day_index)
+        roc_date = f"{base_date.year - 1911}/{base_date.month}/{base_date.day}"
 
-    suggestion = []
+        return (
+            f"📍 {location} {roc_date}\n"
+            f"天氣：{wx}\n"
+            f"氣溫：{min_t}°C - {max_t}°C\n"
+            f"降雨機率：{pop}%\n"
+            f"建議：{suggest(pop, min_t)}"
+        )
+    except Exception as e:
+        print("get_weather error:", e)
+        return f"{location} 天氣資料取得失敗"
+
+# === 建議判斷 ===
+def suggest(pop, min_temp):
+    msg = []
     if pop > 70:
-        suggestion.append("🌧️ 明顯降雨，請備妥雨具")
-    elif pop > 30:
-        suggestion.append("☁️ 降雨機率偏高，可備輕便雨具")
+        msg.append("☔ 降雨明顯，建議穿防水外套並攜帶雨具")
+    elif pop > 40:
+        msg.append("🌂 雨勢可能偏大，建議攜帶雨具")
     elif pop > 10:
-        suggestion.append("🌦️ 可能有短暫小雨")
+        msg.append("🌦 有短暫陣雨機率，建議備傘以防萬一")
     else:
-        suggestion.append("☀️ 天氣穩定無雨")
+        msg.append("🌤 降雨機率低，天氣良好，無需攜帶雨具")
 
-    if min_t < 22:
-        suggestion.append("🧥 記得穿外套避免著涼")
+    if min_temp < 22:
+        msg.append("🧥 氣溫偏涼，請適時穿搭保暖")
 
-    return f"📅 {roc_date}（{'今日' if day_index == 0 else '明日'}）\n🌤 天氣：{wx}\n🌡️ 氣溫：{min_t}°C - {max_t}°C\n🌧️ 降雨機率：{pop}%\n☂️ 建議：{'、'.join(suggestion)}"
+    return "、".join(msg)
+
+# === 一週天氣分析與概況 ===
+def get_weekly_summary():
+    try:
+        url = f'https://opendata.cwa.gov.tw/api/v1/rest/datastore/F-D0047-089?Authorization={cwb_api_key}&locationName=臺北市'
+        res = requests.get(url)
+        data = res.json()
+        elements = data['records']['locations'][0]['location'][0]['weatherElement']
+        wx_values = [e['elementValue'][0]['value'] for e in elements if e['elementName'] == 'Wx'][0:7]
+        pop_values = [int(e['elementValue'][0]['value']) for e in elements if e['elementName'] == 'PoP6h'][0:14]
+        tmin_values = [int(e['elementValue'][0]['value']) for e in elements if e['elementName'] == 'MinT'][0:7]
+        tmax_values = [int(e['elementValue'][0]['value']) for e in elements if e['elementName'] == 'MaxT'][0:7]
+
+        today = datetime.now()
+        end = today + timedelta(days=6)
+        roc_range = f"{today.year - 1911}/{today.month}/{today.day} ~ {end.year - 1911}/{end.month}/{end.day}"
+
+        avg_pop = sum(pop_values) / len(pop_values)
+        avg_min = sum(tmin_values) / len(tmin_values)
+
+        if avg_pop > 70:
+            summary = "本週雨勢偏大，記得隨身攜帶雨具，出門注意安全"
+        elif avg_pop > 40:
+            summary = "本週易有局部陣雨，建議備傘以防突雨"
+        elif avg_pop > 10:
+            summary = "偶有短暫降雨，晴雨參半，攜帶輕便雨具較安心"
+        else:
+            summary = "天氣整體穩定，多為晴朗或多雲，是出遊好時機"
+
+        if avg_min < 20:
+            summary += "，早晚偏涼，記得穿暖一點喔"
+
+        return f"📅 雙北本週天氣概況（{roc_range}）\n{summary}"
+
+    except Exception as e:
+        print("get_weekly_summary error:", e)
+        return "📅 雙北本週天氣概況：資料讀取失敗"
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
