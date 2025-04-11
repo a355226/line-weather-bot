@@ -120,7 +120,7 @@ def get_week_summary(location):
         avg_pop = sum(pops) / len(pops)
         rain_days = sum(1 for p in pops if p > 40)
 
-        summary = "☁ 【雙北本週天氣概況】 ({~}~{~})\n".format(start_roc, end_roc)
+        summary = "☁ 【雙北本週天氣概況】 ({}~{})\n".format(start_roc, end_roc)
 
         if avg_pop > 80:
             summary += "整週雨勢明顯，請務必攜帶雨具並注意天氣變化。"
