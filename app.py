@@ -58,14 +58,15 @@ def handle_message(event):
                 print("❌ [Error] get_today_tomorrow_weather()：", str(e1))
                 part1 = "⚠️ 今明天氣資料無法取得。"
 
-            try:
-                print("🔍 [Debug] 使用者請求雙北本週天氣概況")
-                print("🧪 [Debug] 開始處理 get_week_summary()", flush=True)
-                part2 = get_week_summary()
-                print("✅ [Debug] 一週天氣概況取得成功")
-            except Exception as e2:
-                print("❌ [Error] get_week_summary()：", str(e2))
-                part2 = "⚠️ 雙北本週天氣概況暫時無法取得。"
+        try:
+            print("🧪 [Debug] 開始處理 get_week_summary()", flush=True)
+            part2 = get_week_summary()
+            print("✅ [Debug] 一週天氣概況取得成功", flush=True)
+        except Exception as e2:
+            import traceback
+            print("❌ [Error] get_week_summary()：", str(e2), flush=True)
+            traceback.print_exc()
+            part2 = "⚠️ 雙北本週天氣概況暫時無法取得。"
 
             reply = part1 + "\n\n" + part2
         else:
