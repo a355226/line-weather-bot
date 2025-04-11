@@ -118,7 +118,9 @@ def get_week_summary():
     print("📄 [Debug] 氣象局資料：", json.dumps(data, indent=2, ensure_ascii=False))
 
     elements = data['records']['Locations'][0]['Location'][0]['WeatherElement']
-
+    for i, e in enumerate(elements):
+    print(f"🔍 Element {i}: {e['ElementName']}")
+    
     # 找出每個欄位的 index
     wx_index = next(i for i, e in enumerate(elements) if e['ElementName'] == '天氣現象')
     pop_index = next(i for i, e in enumerate(elements) if e['ElementName'] == '降雨機率')
