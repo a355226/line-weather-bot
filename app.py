@@ -36,16 +36,25 @@ def handle_message(event):
     user_msg = event.message.text.strip()
 
     if user_msg == "天氣":
+        part1 = ""
+        part2 = ""
         try:
-            print("🔍 [Debug] 使用者請求天氣資料")
+            print("🔍 [Debug] 使用者請求今明天氣")
             part1 = get_today_tomorrow_weather()
             print("✅ [Debug] 今日與明日天氣取得成功")
+        except Exception as e1:
+            print("❌ [Error] get_today_tomorrow_weather()：", str(e1))
+            part1 = "⚠️ 今明天氣資料無法取得。"
+
+        try:
+            print("🔍 [Debug] 使用者請求雙北本週天氣概況")
             part2 = get_week_summary()
             print("✅ [Debug] 一週天氣概況取得成功")
-            reply = part1 + "\n\n" + part2
-        except Exception as e:
-            print("❌ [Error] 資料讀取失敗：", str(e))
-            reply = "資料讀取失敗，請稍後再試～"
+        except Exception as e2:
+            print("❌ [Error] get_week_summary()：", str(e2))
+            part2 = "⚠️ 雙北本週天氣概況暫時無法取得。"
+
+        reply = part1 + "\n\n" + part2
     else:
         reply = (
             "🌤 歡迎使用雙北天氣機器人 ☁️\n"
@@ -69,58 +78,56 @@ def get_today_tomorrow_weather():
         data = fetch_weather_data(loc)
         msg += f"【{loc}】\n"
         for i in [0, 1]:
-            date = parse_civil_date(data['records']['location'][0]['weatherElement'][0]['time'][i]['startTime'])
-            wx = data['records']['location'][0]['weatherElement'][0]['time'][i]['parameter']['parameterName']
+            time_data = data['records']['location'][0]['weatherElement'][0]['time'][i]
+            start_time = time_data['startTime']
+            label = "今日" if i == 0 else "明日"
+            date = parse_civil_date(start_time)
+            wx = time_data['parameter']['parameterName']
             pop = int(data['records']['location'][0]['weatherElement'][1]['time'][i]['parameter']['parameterName'])
             min_t = int(data['records']['location'][0]['weatherElement'][2]['time'][i]['parameter']['parameterName'])
             max_t = int(data['records']['location'][0]['weatherElement'][4]['time'][i]['parameter']['parameterName'])
             suggest = build_suggestion(pop, min_t)
-            label = "今日" if i == 0 else "明日"
             msg += f"{label}（{date}）\n☁ 天氣：{wx}\n🌡 氣溫：{min_t}-{max_t}°C\n☔ 降雨：{pop}%\n🧾 建議：{suggest}\n\n"
     return msg.strip()
 
 def get_week_summary():
-    try:
-        print("🔍 [Debug] 呼叫中央氣象局 API 取得台北市 12 區一週資料")
-        url = f"https://opendata.cwa.gov.tw/api/v1/rest/datastore/F-D0047-063?Authorization={cwa_api_key}&locationName=臺北市"
-        data = requests.get(url).json()
-        locations_data = data['records']['location']
+    print("🔍 [Debug] 呼叫中央氣象局 API 取得台北市 12 區一週資料")
+    url = "https://opendata.cwa.gov.tw/api/v1/rest/datastore/F-D0047-063?Authorization=CWA-A2775CB4-B52C-47CE-8943-9570AE61D448&locationName=臺北市"
+    response = requests.get(url)
+    print(f"📦 [API] 回應狀態碼：{response.status_code}")
+    data = response.json()
+    locations_data = data['records']['location']
 
-        days = len(locations_data[0]['weatherElement'][0]['time'])  # 通常是 7 天
+    days = len(locations_data[0]['weatherElement'][0]['time'])
+    avg_min = [0] * days
+    avg_max = [0] * days
+    avg_pop = [0] * days
+    wx_lists = [[] for _ in range(days)]
 
-        # 初始化累加用清單
-        avg_min = [0] * days
-        avg_max = [0] * days
-        avg_pop = [0] * days
-        wx_lists = [[] for _ in range(days)]
+    for loc in locations_data:
+        weathers = loc['weatherElement']
+        for i in range(days):
+            avg_min[i] += int(weathers[8]['time'][i]['elementValue'][0]['value'])
+            avg_max[i] += int(weathers[8]['time'][i]['elementValue'][1]['value'])
+            avg_pop[i] += int(weathers[0]['time'][i]['elementValue'][0]['value'])
+            wx_lists[i].append(weathers[6]['time'][i]['elementValue'][0]['value'])
 
-        for loc in locations_data:
-            weathers = loc['weatherElement']
-            for i in range(days):
-                avg_min[i] += int(weathers[8]['time'][i]['elementValue'][0]['value'])
-                avg_max[i] += int(weathers[8]['time'][i]['elementValue'][1]['value'])
-                avg_pop[i] += int(weathers[0]['time'][i]['elementValue'][0]['value'])
-                wx_lists[i].append(weathers[6]['time'][i]['elementValue'][0]['value'])
+    n = len(locations_data)
+    min_temps = [x // n for x in avg_min]
+    max_temps = [x // n for x in avg_max]
+    pops = [x // n for x in avg_pop]
+    wxs = [most_common(wx_lists[i]) for i in range(days)]
 
-        n = len(locations_data)
-        min_temps = [x // n for x in avg_min]
-        max_temps = [x // n for x in avg_max]
-        pops = [x // n for x in avg_pop]
-        wxs = [most_common(wx_lists[i]) for i in range(days)]
+    avg_min_all = sum(min_temps) / days
+    avg_max_all = sum(max_temps) / days
+    avg_pop_all = sum(pops) / days
 
-        avg_min_all = sum(min_temps) / days
-        avg_max_all = sum(max_temps) / days
-        avg_pop_all = sum(pops) / days
+    date_start = parse_civil_date(locations_data[0]['weatherElement'][0]['time'][0]['startTime'])
+    date_end = parse_civil_date(locations_data[0]['weatherElement'][0]['time'][-1]['endTime'])
 
-        date_start = parse_civil_date(locations_data[0]['weatherElement'][0]['time'][0]['startTime'])
-        date_end = parse_civil_date(locations_data[0]['weatherElement'][0]['time'][-1]['endTime'])
+    desc = classify_week_weather(avg_min_all, avg_max_all, avg_pop_all, wxs)
 
-        desc = classify_week_weather(avg_min_all, avg_max_all, avg_pop_all, wxs)
-
-        return f"📅 雙北本週天氣概況（{date_start}～{date_end}）\n{desc}"
-    except Exception as e:
-        print("❌ [Error] get_week_summary():", str(e))
-        return "⚠️ 本週天氣概況暫時無法取得～"
+    return f"📅 雙北本週天氣概況（{date_start}～{date_end}）\n{desc}"
 
 # === 工具函數 ===
 
