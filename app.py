@@ -167,9 +167,10 @@ def fetch_weather_data(location):
     print("📦 [API] 回應狀態碼：", res.status_code)
     return res.json()
 
+from dateutil import parser
 def parse_civil_date(dt_str, days_offset=0):
     try:
-        dt = datetime.strptime(dt_str, "%Y-%m-%dT%H:%M:%S")
+        dt = parser.isoparse(dt_str)
     except ValueError:
         dt = datetime.strptime(dt_str, "%Y-%m-%d %H:%M:%S")
     dt += timedelta(days=days_offset)
