@@ -110,22 +110,29 @@ def get_today_tomorrow_weather():
     return msg.strip()
 
 def get_week_summary():
-    print("🔍 [Debug] 呼叫中央氣象局 API 取得大安區一週資料")
+    print("🔍 [Debug] 呼叫中央氣象局 API 取得臺北市一週資料")
     url = f"https://opendata.cwa.gov.tw/api/v1/rest/datastore/F-D0047-063?Authorization={cwa_api_key}&locationName=臺北市"
     response = requests.get(url)
     print(f"📦 [API] 回應狀態碼：{response.status_code}")
-    data = response.json()
-    print("📄 [Debug] 氣象局資料：", json.dumps(data, indent=2, ensure_ascii=False))
-
-    elements = data['records']['Locations'][0]['Location'][0]['WeatherElement']
-    for i, e in enumerate(elements):
-        print(f"🔍 Element {i}: {e['ElementName']}")
     
-    # 找出每個欄位的 index
-    wx_index = next(i for i, e in enumerate(elements) if e['ElementName'] == '天氣現象')
-    pop_index = next(i for i, e in enumerate(elements) if e['ElementName'] == '降雨機率')
-    min_index = next(i for i, e in enumerate(elements) if e['ElementName'] == '最低溫度')
-    max_index = next(i for i, e in enumerate(elements) if e['ElementName'] == '最高溫度')
+    data = response.json()
+
+    try:
+        elements = data['records']['Locations'][0]['Location'][0]['WeatherElement']
+        element_names = [e['ElementName'] for e in elements]
+        print("📄 [Debug] 可用欄位名稱：", element_names)
+    except Exception as e:
+        print("❌ [Error] 資料解析失敗，可能欄位名稱不正確：", str(e))
+        return "⚠️ 資料格式異常，無法取得本週天氣概況。"
+
+    try:
+        wx_index = element_names.index('天氣現象')
+        pop_index = element_names.index('降雨機率')
+        min_index = element_names.index('最低溫度')
+        max_index = element_names.index('最高溫度')
+    except ValueError as e:
+        print("❌ [Error] 找不到指定欄位名稱：", str(e))
+        return "⚠️ 無法解析一週天氣欄位，請檢查 API 回傳格式。"
 
     days = len(elements[0]['Time'])
     min_temps = [int(elements[min_index]['Time'][i]['ElementValue'][0]['Value']) for i in range(days)]
@@ -143,6 +150,7 @@ def get_week_summary():
     desc = classify_week_weather(avg_min, avg_max, avg_pop, wxs)
 
     return f"📅 雙北本週天氣概況（{date_start}～{date_end}）\n{desc}"
+
 
 
 
