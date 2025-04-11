@@ -154,3 +154,7 @@ def classify_week_weather(min_t, max_t, avg_pop, wxs):
         result.append("一週天氣變化大，晴雨交錯，出門建議多準備 ☀☁")
 
     return "\n".join(result)
+
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)
