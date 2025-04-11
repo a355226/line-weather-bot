@@ -179,28 +179,29 @@ def weekend_activity_advice(wxs, pops, times):
     from datetime import datetime
     advice = []
     seen_dates = set()
-    
+
     for i, dt_str in enumerate(times):
         try:
             dt = datetime.fromisoformat(dt_str)
-            if dt.weekday() >= 5:  # 週六或週日
+            if dt.weekday() >= 5:  # 週六日
                 date_key = dt.strftime("%Y-%m-%d")
                 if date_key in seen_dates:
                     continue
                 seen_dates.add(date_key)
                 display_date = dt.strftime("%m/%d")
-                if pops[i] < 30 and "雨" not in wxs[i]:
-                    advice.append(f"{display_date} 適合外出踏青 🚴")
-                elif pops[i] < 50:
+
+                # 優先判斷高降雨機率
+                if pops[i] >= 50:
+                    advice.append(f"{display_date} 可能會下雨，建議以室內活動為主 ☔")
+                elif pops[i] >= 15 or "雨" in wxs[i]:
                     advice.append(f"{display_date} 天氣稍不穩定，可安排輕鬆行程 🌤")
                 else:
-                    advice.append(f"{display_date} 可能會下雨，建議以室內活動為主 ☔")
+                    advice.append(f"{display_date} 適合外出踏青 🚴")
         except:
             continue
-    
+
     if not advice:
         return "🏖️ 本週週末天氣資料不足，建議持續關注預報 🧐"
-    
     return "🏖️ 週末活動建議：\n" + "\n".join(advice)
 
 if __name__ == "__main__":
