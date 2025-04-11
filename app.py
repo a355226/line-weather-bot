@@ -83,55 +83,34 @@ def handle_message(event):
 
 def get_today_tomorrow_weather():
     msg = ""
+    today = datetime.now().date()
+    tomorrow = today + timedelta(days=1)
+
     for loc in locations:
         try:
             data = fetch_weather_data(loc)
-            times = data['records']['location'][0]['weatherElement'][0]['time']
-            today = datetime.now().date()
-            tomorrow = today + timedelta(days=1)
-
-            def find_index_by_date(times, target_date):
-                for i, t in enumerate(times):
-                    try:
-                        dt = parser.isoparse(t['startTime']).date()
-                        if dt == target_date:
-                            return i
-                    except:
-                        continue
-                return None
-
-            today_index = find_index_by_date(times, today)
-            tomorrow_index = find_index_by_date(times, tomorrow)
-
             msg += f"【{loc}】\n"
+            times = data['records']['location'][0]['weatherElement'][0]['time']
+            today_index = next((i for i, t in enumerate(times) if parser.isoparse(t['startTime']).date() == today), None)
+            tomorrow_index = next((i for i, t in enumerate(times) if parser.isoparse(t['startTime']).date() == tomorrow), None)
 
-            if today_index is not None:
-                time_data = times[today_index]
+            def build_day(index, label):
+                if index is None:
+                    return f"{label}：⚠️ 無法正確取得預報資料。\n"
+                time_data = times[index]
                 date = parse_civil_date(time_data['startTime'])
                 wx = time_data['parameter']['parameterName']
-                pop = int(data['records']['location'][0]['weatherElement'][1]['time'][today_index]['parameter']['parameterName'])
-                min_t = int(data['records']['location'][0]['weatherElement'][2]['time'][today_index]['parameter']['parameterName'])
-                max_t = int(data['records']['location'][0]['weatherElement'][4]['time'][today_index]['parameter']['parameterName'])
+                pop = int(data['records']['location'][0]['weatherElement'][1]['time'][index]['parameter']['parameterName'])
+                min_t = int(data['records']['location'][0]['weatherElement'][2]['time'][index]['parameter']['parameterName'])
+                max_t = int(data['records']['location'][0]['weatherElement'][4]['time'][index]['parameter']['parameterName'])
                 suggest = build_suggestion(pop, min_t)
-                msg += f"今日（{date}）\n☁ 天氣：{wx}\n🌡 氣溫：{min_t}-{max_t}°C\n☔ 降雨：{pop}%\n🧾 建議：{suggest}\n\n"
-            else:
-                msg += "今日：⚠️ 無法正確取得預報資料。\n\n"
+                return f"{label}（{date}）\n☁ 天氣：{wx}\n🌡 氣溫：{min_t}-{max_t}°C\n☔ 降雨：{pop}%\n🧾 建議：{suggest}\n"
 
-            if tomorrow_index is not None:
-                time_data = times[tomorrow_index]
-                date = parse_civil_date(time_data['startTime'])
-                wx = time_data['parameter']['parameterName']
-                pop = int(data['records']['location'][0]['weatherElement'][1]['time'][tomorrow_index]['parameter']['parameterName'])
-                min_t = int(data['records']['location'][0]['weatherElement'][2]['time'][tomorrow_index]['parameter']['parameterName'])
-                max_t = int(data['records']['location'][0]['weatherElement'][4]['time'][tomorrow_index]['parameter']['parameterName'])
-                suggest = build_suggestion(pop, min_t)
-                msg += f"明日（{date}）\n☁ 天氣：{wx}\n🌡 氣溫：{min_t}-{max_t}°C\n☔ 降雨：{pop}%\n🧾 建議：{suggest}\n\n"
-            else:
-                msg += "明日：⚠️ 無法正確取得預報資料。\n\n"
+            msg += build_day(today_index, "今日") + "\n" + build_day(tomorrow_index, "明日") + "\n"
 
         except Exception as e:
-            msg += f"【{loc}】\n⚠️ 無法取得天氣資料。\n\n"
-            print(f"❌ [錯誤] get_today_tomorrow_weather() 抓取 {loc} 時出錯：", str(e))
+            msg += f"【{loc}】\n⚠️ 無法正確取得今日與明日的預報資料。\n\n"
+
     return msg.strip()
 
     
