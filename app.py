@@ -235,32 +235,35 @@ def classify_week_weather(min_t, max_t, avg_pop, wxs, uv_indexes, pops, dates):
     return " ".join(result)
 
 def weekend_activity_advice(wxs, pops, times):
-    from datetime import datetime
     advice = []
-    seen_dates = set()
+    weekend_items = []
+
+    weekday_map = {5: "六", 6: "日"}
 
     for i, dt_str in enumerate(times):
         try:
             dt = datetime.fromisoformat(dt_str)
-            if dt.weekday() >= 5:  # 週六日
-                date_key = dt.strftime("%Y-%m-%d")
-                if date_key in seen_dates:
-                    continue
-                seen_dates.add(date_key)
-                display_date = dt.strftime("%m/%d")
+            wd = dt.weekday()
+            if wd in [5, 6]:  # 只抓週六日
+                weekday_str = f"（{weekday_map[wd]}）"
+                display_date = dt.strftime("%m/%d") + weekday_str
 
-                # 優先判斷高降雨機率
                 if pops[i] >= 50:
-                    advice.append(f"{display_date} 可能會下雨，建議以室內活動為主 ☔")
+                    weekend_items.append((wd, f"{display_date} 可能會下雨，建議以室內活動為主 ☔"))
                 elif pops[i] >= 15 or "雨" in wxs[i]:
-                    advice.append(f"{display_date} 天氣稍不穩定，可安排輕鬆行程 🌤")
+                    weekend_items.append((wd, f"{display_date} 天氣稍不穩定，可安排輕鬆行程 🌤"))
                 else:
-                    advice.append(f"{display_date} 適合外出踏青 🚴")
+                    weekend_items.append((wd, f"{display_date} 適合外出踏青 🚴"))
         except:
             continue
 
+    # 照順序（六再日）排序
+    weekend_items.sort(key=lambda x: x[0])
+    advice = [item[1] for item in weekend_items]
+
     if not advice:
         return "🏖️ 本週週末天氣資料不足，建議持續關注預報 🧐"
+
     return "🏖️ 週末活動建議：\n" + "\n".join(advice)
 
 if __name__ == "__main__":
