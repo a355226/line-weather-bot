@@ -83,11 +83,23 @@ def handle_message(event):
 
 def get_today_tomorrow_weather():
     msg = ""
+    now = datetime.now()
     for loc in locations:
         data = fetch_weather_data(loc)
         msg += f"【{loc}】\n"
-        for i, label in zip([0, 2], ["今日", "明日"]):
-            time_data = data['records']['location'][0]['weatherElement'][0]['time'][i]
+        times = data['records']['location'][0]['weatherElement'][0]['time']
+
+        # 根據現在時間抓「今日」與「明日」的預報
+        today_index = 0
+        tomorrow_index = 2
+        today_start = parser.isoparse(times[today_index]['startTime'])
+        if today_start.date() < now.date():
+            # 如果 API 第0筆其實是昨天晚上的夜間預報，就往後推
+            today_index += 1
+            tomorrow_index += 1
+
+        for i, label in zip([today_index, tomorrow_index], ["今日", "明日"]):
+            time_data = times[i]
             start_time = time_data['startTime']
             date = parse_civil_date(start_time)
             wx = time_data['parameter']['parameterName']
@@ -97,6 +109,7 @@ def get_today_tomorrow_weather():
             suggest = build_suggestion(pop, min_t)
             msg += f"{label}（{date}）\n☁ 天氣：{wx}\n🌡 氣溫：{min_t}-{max_t}°C\n☔ 降雨：{pop}%\n🧾 建議：{suggest}\n\n"
     return msg.strip()
+
 
 def get_week_summary():
     url = f"https://opendata.cwa.gov.tw/api/v1/rest/datastore/F-D0047-063?Authorization={cwa_api_key}&locationName=臺北市"
