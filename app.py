@@ -113,8 +113,8 @@ def get_week_summary():
     print(f"📦 [API] 回應狀態碼：{response.status_code}")
     data = response.json()
 
-    # ✅ 查大安區時，是 records → location（小寫）→ [0]
-    elements = data['records']['locations'][0]['location'][0]['weatherElement']
+    # ✅ 真正正確格式（你查的是 locationName=大安區）
+    elements = data['records']['location'][0]['weatherElement']
 
     days = len(elements[0]['time'])
     min_temps = [int(elements[8]['time'][i]['elementValue'][0]['value']) for i in range(days)]
