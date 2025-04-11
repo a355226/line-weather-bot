@@ -235,36 +235,38 @@ def classify_week_weather(min_t, max_t, avg_pop, wxs, uv_indexes, pops, dates):
     return " ".join(result)
 
 def weekend_activity_advice(wxs, pops, times):
-    advice = []
-    weekend_items = []
+    from collections import defaultdict
 
+    advice_dict = defaultdict(list)
     weekday_map = {5: "六", 6: "日"}
 
     for i, dt_str in enumerate(times):
         try:
             dt = datetime.fromisoformat(dt_str)
             wd = dt.weekday()
-            if wd in [5, 6]:  # 只抓週六日
-                weekday_str = f"（{weekday_map[wd]}）"
-                display_date = dt.strftime("%m/%d") + weekday_str
+            if wd in [5, 6]:  # 週六或週日
+                key = dt.strftime("%m/%d") + f"（{weekday_map[wd]}）"
 
                 if pops[i] >= 50:
-                    weekend_items.append((wd, f"{display_date} 可能會下雨，建議以室內活動為主 ☔"))
+                    advice_dict[key].append("可能會下雨，建議以室內活動為主 ☔")
                 elif pops[i] >= 15 or "雨" in wxs[i]:
-                    weekend_items.append((wd, f"{display_date} 天氣稍不穩定，可安排輕鬆行程 🌤"))
+                    advice_dict[key].append("天氣稍不穩定，可安排輕鬆行程 🌤")
                 else:
-                    weekend_items.append((wd, f"{display_date} 適合外出踏青 🚴"))
+                    advice_dict[key].append("適合外出踏青 🚴")
         except:
             continue
 
-    # 照順序（六再日）排序
-    weekend_items.sort(key=lambda x: x[0])
-    advice = [item[1] for item in weekend_items]
+    # 移除重複、每日期只顯示一句
+    summary = []
+    for date_key in sorted(advice_dict):
+        unique = list(dict.fromkeys(advice_dict[date_key]))
+        summary.append(f"{date_key} {unique[0]}")
 
-    if not advice:
+    if not summary:
         return "🏖️ 本週週末天氣資料不足，建議持續關注預報 🧐"
 
-    return "🏖️ 週末活動建議：\n" + "\n".join(advice)
+    return "🏖️ 週末活動建議：\n" + "\n".join(summary)
+
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
