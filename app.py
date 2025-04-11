@@ -75,7 +75,7 @@ def get_today_tomorrow_weather():
 
 def get_week_summary():
     try:
-        url = f"https://opendata.cwa.gov.tw/api/v1/rest/datastore/F-D0047-063?Authorization={cwb_api_key}&locationName=臺北市"
+        url = f"https://opendata.cwa.gov.tw/api/v1/rest/datastore/F-D0047-063?Authorization={cwa_api_key}&locationName=臺北市"
         data = requests.get(url).json()
         weathers = data['records']['locations'][0]['location'][0]['weatherElement']
         min_temps = [int(t['elementValue'][0]['value']) for t in weathers[8]['time']]
@@ -99,7 +99,7 @@ def get_week_summary():
 # === 工具函數 ===
 
 def fetch_weather_data(location):
-    url = f"https://opendata.cwa.gov.tw/api/v1/rest/datastore/F-C0032-001?Authorization={CWA-A2775CB4-B52C-47CE-8943-9570AE61D448}&locationName={臺北市}"
+    url = f"https://opendata.cwa.gov.tw/api/v1/rest/datastore/F-C0032-001?Authorization={cwa_api_key}&locationName={location}"
     return requests.get(url).json()
 
 def parse_civil_date(dt_str, days_offset=0):
@@ -144,7 +144,6 @@ def classify_week_weather(min_t, max_t, avg_pop, wxs):
         result.append("日夜溫差大，注意衣物調整 🧣🧤")
 
     return " ".join(result)
-
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
