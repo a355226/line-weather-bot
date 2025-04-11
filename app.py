@@ -133,8 +133,8 @@ def get_today_tomorrow_weather():
 def find_index_by_date(times, target_date):
     for i, t in enumerate(times):
         try:
-            dt = parser.isoparse(t['startTime'])
-            if abs((dt.date() - target_date).days) == 0:
+            dt = parser.isoparse(t['startTime']).date()
+            if dt == target_date:
                 return i
         except:
             continue
