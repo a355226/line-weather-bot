@@ -39,7 +39,7 @@ def callback():
 @handler.add(MessageEvent, message=TextMessageContent)
 def handle_message(event):
     print("🟢 [Webhook Triggered] 收到來自 LINE 的訊息事件")
-    ...
+
     user_msg = event.message.text.strip()
 
     if user_msg == "天氣":
@@ -76,6 +76,7 @@ def handle_message(event):
                 messages=[TextMessage(text=reply)]
             )
         )
+
 
 # === 天氣查詢主體 ===
 
