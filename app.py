@@ -113,9 +113,8 @@ def get_week_summary():
     print(f"📦 [API] 回應狀態碼：{response.status_code}")
     data = response.json()
 
-    # ✅ 這次直接查「大安區」，資料結構會簡化成：
-    # records → locations → [0] → weatherElement
-    elements = data['records']['locations'][0]['weatherElement']
+    # ✅ 查大安區時，是 records → location（小寫）→ [0]
+    elements = data['records']['location'][0]['weatherElement']
 
     days = len(elements[0]['time'])
     min_temps = [int(elements[8]['time'][i]['elementValue'][0]['value']) for i in range(days)]
@@ -133,6 +132,7 @@ def get_week_summary():
     desc = classify_week_weather(avg_min, avg_max, avg_pop, wxs)
 
     return f"📅 雙北本週天氣概況（{date_start}～{date_end}）\n{desc}"
+
 
 
 # === 工具函數 ===
