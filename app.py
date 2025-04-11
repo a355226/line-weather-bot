@@ -110,7 +110,9 @@ def get_week_summary():
     response = requests.get(url)
     print(f"📦 [API] 回應狀態碼：{response.status_code}")
     data = response.json()
-    locations_data = data['records']['location']
+
+    # ✅ 修正為正確 JSON 路徑
+    locations_data = data['records']['Locations'][0]['location']
 
     days = len(locations_data[0]['weatherElement'][0]['time'])
     avg_min = [0] * days
