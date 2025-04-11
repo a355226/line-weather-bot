@@ -195,27 +195,50 @@ def build_suggestion(pop, min_t):
         tips.append("天氣穩定，輕便出門最適合 ☀")
     return "、".join(tips)
 
-def classify_week_weather(min_t, max_t, avg_pop, wxs):
+def classify_week_weather(min_t, max_t, avg_pop, wxs, uv_indexes, pops, dates):
     rain_days = sum(1 for w in wxs if "雨" in w)
     result = []
 
-    if avg_pop > 80:
-        result.append("本週多雨，幾乎天天會下雨，要記得每天帶傘 ☔")
-    elif avg_pop > 50:
-        result.append("這週時晴時雨，建議雨具隨身攜帶 ☁🌧")
+    # 🌧 降雨情境分析
+    if rain_days >= 7:
+        result.append("本週天天有雨，記得每天攜帶雨具 ☔")
+    elif avg_pop > 80:
+        result.append("本週降雨機率偏高，建議雨具隨身攜帶 ☁🌧")
     elif rain_days >= 5:
-        result.append("大多日子有雨，外出建議穿防水鞋 ☂")
+        result.append("本週多日有雨，外出請穿防水裝備 ☂")
     elif avg_pop < 20 and all("晴" in w for w in wxs):
-        result.append("整週陽光普照，適合出遊 ☀️，注意防曬 🧴")
+        result.append("整週陽光普照，適合戶外活動 ☀️，注意防曬 🧴")
     else:
-        result.append("天氣變化大，建議每日留意天氣預報 📡")
+        result.append("天氣變化大，建議每日關注氣象 ☁")
 
+    # 🧣 穿搭與氣溫建議
     if max_t >= 32:
-        result.append("氣溫偏高，要注意防中暑與防曬 🌡️")
-    elif min_t < 18:
-        result.append("早晚溫差大，要注意保暖 🧥")
-    elif max_t - min_t >= 10:
-        result.append("日夜溫差大，注意衣物調整 🧣🧤")
+        result.append("氣溫偏高，注意防中暑與補水 🌡️")
+    if max_t - min_t >= 10:
+        result.append("日夜溫差大，建議早晚加件外套 🧤")
+    if min_t < 18:
+        result.append("氣溫偏冷，特別注意保暖 🧥")
+    if avg_pop > 60 and min_t < 20:
+        result.append("天氣濕冷，穿著建議選擇保暖防潮衣物 💧🧥")
+    elif min_t < 18 and all(p < 30 for p in pops):
+        result.append("乾冷氣候，注意皮膚保濕與多補水 💧🧴")
+
+    # 🌞 紫外線分析
+    max_uv = max(uv_indexes) if uv_indexes else 0
+    if max_uv >= 7:
+        result.append("紫外線強烈，建議中午避免曝曬 ☀️🧴")
+    elif max_uv >= 5:
+        result.append("紫外線中等偏強，記得補擦防曬 😎")
+
+    # 🎯 週末活動建議
+    weekend_indices = [i for i, d in enumerate(dates) if parser.isoparse(d).weekday() in [5, 6]]
+    if weekend_indices:
+        wet = any("雨" in wxs[i] for i in weekend_indices)
+        hot = any(max_t > 30 for i in weekend_indices)
+        if not wet:
+            result.append("本週末天氣穩定，適合安排戶外活動 🚴‍♂️🌳")
+        else:
+            result.append("週末可能有雨，建議規劃室內行程 ☔📚")
 
     return " ".join(result)
 
