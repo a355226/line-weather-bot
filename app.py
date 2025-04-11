@@ -10,7 +10,7 @@ from datetime import datetime, timedelta
 app = Flask(__name__)
 channel_access_token = 'yRDHUt2i8Pg2uvOvPTVj9Mvg55FJYxPu562/d1JFcEOecGz3zbfn9pCJz9el41z1iSfdd0+pGDbGc82Ki++Y6WgiIrdBHb4l1TDo24fS85NIKkkrJVP2c9yk1BNOR08nvi5UlGb1ICaKcdjWIKlSxQdB04t89/1O/w1cDnyilFU='
 channel_secret = 'bf209d4d55be8865f7a5ba2522665811'
-cwb_api_key = 'CWA-A2775CB4-B52C-47CE-8943-9570AE61D448'
+cwa_api_key = "CWA-A2775CB4-B52C-47CE-8943-9570AE61D448"
 configuration = Configuration(access_token=channel_access_token)
 handler = WebhookHandler(channel_secret)
 
