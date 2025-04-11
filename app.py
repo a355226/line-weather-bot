@@ -63,11 +63,11 @@ def handle_message(event):
                 traceback.print_exc()
                 part2 = "⚠️ 雙北本週天氣概況暫時無法取得。"
 
-            reply = part1 + "\\n\\n" + part2
+            reply = part1 + "\n\n" + part2
         else:
             reply = (
-                "🌤 歡迎使用雙北天氣機器人 ☁️\\n"
-                "輸入「天氣」查詢今明預報及雙北一週天氣概況！\\n"
+                "🌤 歡迎使用雙北天氣機器人 ☁️\n"
+                "輸入「天氣」查詢今明預報及雙北一週天氣概況！\n"
                 "⚠️ 傳送後請稍待 1～2 分鐘取得最新資料。"
             )
 
@@ -85,7 +85,7 @@ def get_today_tomorrow_weather():
     msg = ""
     for loc in locations:
         data = fetch_weather_data(loc)
-        msg += f"【{loc}】\\n"
+        msg += f"【{loc}】\n"
         for i, label in zip([0, 2], ["今日", "明日"]):
             time_data = data['records']['location'][0]['weatherElement'][0]['time'][i]
             start_time = time_data['startTime']
@@ -95,7 +95,7 @@ def get_today_tomorrow_weather():
             min_t = int(data['records']['location'][0]['weatherElement'][2]['time'][i]['parameter']['parameterName'])
             max_t = int(data['records']['location'][0]['weatherElement'][4]['time'][i]['parameter']['parameterName'])
             suggest = build_suggestion(pop, min_t)
-            msg += f"{label}（{date}）\\n☁ 天氣：{wx}\\n🌡 氣溫：{min_t}-{max_t}°C\\n☔ 降雨：{pop}%\\n🧾 建議：{suggest}\\n\\n"
+            msg += f"{label}（{date}）\n☁ 天氣：{wx}\n🌡 氣溫：{min_t}-{max_t}°C\n☔ 降雨：{pop}%\n🧾 建議：{suggest}\n\n"
     return msg.strip()
 
 def get_week_summary():
@@ -137,7 +137,7 @@ def get_week_summary():
     desc = classify_week_weather(avg_min, avg_max, avg_pop, wxs, uv_indexes, pops, times)
     weekend = weekend_activity_advice(wxs, pops, times)
 
-    return f"📅 雙北本週天氣概況（{date_start}～{date_end}）\\n{desc}\\n\\n{weekend}"
+    return f"📅 雙北本週天氣概況（{date_start}～{date_end}）\n{desc}\n\n{weekend}"
 
 def fetch_weather_data(location):
     url = f"https://opendata.cwa.gov.tw/api/v1/rest/datastore/F-C0032-001?Authorization={cwa_api_key}&locationName={location}"
@@ -191,7 +191,7 @@ def weekend_activity_advice(wxs, pops, times):
         except: continue
     if not advice:
         return "🏖️ 本週週末天氣資料不足，建議持續關注預報 🧐"
-    return "🏖️ 週末活動建議：\\n" + "\\n".join(advice)
+    return "🏖️ 週末活動建議：\n" + "\n".join(advice)
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
