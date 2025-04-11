@@ -116,25 +116,32 @@ def get_week_summary():
     print(f"📦 [API] 回應狀態碼：{response.status_code}")
     data = response.json()
     print("📄 [Debug] 氣象局資料：", json.dumps(data, indent=2, ensure_ascii=False))
-    # ✅ 真正正確格式（locationName=大安區）
-    elements = data['records']['Locations'][0]['location'][0]['weatherElement']
 
-    days = len(elements[0]['time'])
-    min_temps = [int(elements[8]['time'][i]['elementValue'][0]['value']) for i in range(days)]
-    max_temps = [int(elements[8]['time'][i]['elementValue'][1]['value']) for i in range(days)]
-    pops = [int(elements[0]['time'][i]['elementValue'][0]['value']) for i in range(days)]
-    wxs = [elements[6]['time'][i]['elementValue'][0]['value'] for i in range(days)]
+    elements = data['records']['Locations'][0]['Location'][0]['WeatherElement']
+
+    # 找出每個欄位的 index
+    wx_index = next(i for i, e in enumerate(elements) if e['ElementName'] == '天氣現象')
+    pop_index = next(i for i, e in enumerate(elements) if e['ElementName'] == '降雨機率')
+    min_index = next(i for i, e in enumerate(elements) if e['ElementName'] == '最低溫度')
+    max_index = next(i for i, e in enumerate(elements) if e['ElementName'] == '最高溫度')
+
+    days = len(elements[0]['Time'])
+    min_temps = [int(elements[min_index]['Time'][i]['ElementValue'][0]['Value']) for i in range(days)]
+    max_temps = [int(elements[max_index]['Time'][i]['ElementValue'][0]['Value']) for i in range(days)]
+    pops = [int(elements[pop_index]['Time'][i]['ElementValue'][0]['Value']) for i in range(days)]
+    wxs = [elements[wx_index]['Time'][i]['ElementValue'][0]['Value'] for i in range(days)]
 
     avg_min = sum(min_temps) / days
     avg_max = sum(max_temps) / days
     avg_pop = sum(pops) / days
 
-    date_start = parse_civil_date(elements[0]['time'][0]['startTime'])
-    date_end = parse_civil_date(elements[0]['time'][-1]['endTime'])
+    date_start = parse_civil_date(elements[0]['Time'][0]['StartTime'])
+    date_end = parse_civil_date(elements[0]['Time'][-1]['EndTime'])
 
     desc = classify_week_weather(avg_min, avg_max, avg_pop, wxs)
 
     return f"📅 雙北本週天氣概況（{date_start}～{date_end}）\n{desc}"
+
 
 
 # === 工具函數 ===
