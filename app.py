@@ -32,6 +32,7 @@ def callback():
         handler.handle(body, signature)
     except Exception as e:
         print("❌ [Webhook Exception]", str(e))
+        print("📦 [Webhook Raw Body]：", body)
         abort(400)
 
     return 'OK'
