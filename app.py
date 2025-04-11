@@ -6,6 +6,7 @@ import requests
 import os
 from datetime import datetime, timedelta
 import json
+from dateutil import parser
 
 # === 設定 ===
 app = Flask(__name__)
@@ -117,17 +118,16 @@ def get_week_summary():
     data = response.json()
 
     elements = data['records']['Locations'][0]['Location'][0]['WeatherElement']
-
     available_names = [e['ElementName'] for e in elements]
     print("📄 [Debug] 可用欄位名稱：", available_names)
 
-    # 找對應欄位的 index
     wx_index = next(i for i, e in enumerate(elements) if '天氣現象' in e['ElementName'])
     pop_index = next(i for i, e in enumerate(elements) if '降雨機率' in e['ElementName'])
     min_index = next(i for i, e in enumerate(elements) if '最低溫度' in e['ElementName'])
     max_index = next(i for i, e in enumerate(elements) if '最高溫度' in e['ElementName'])
+    wind_index = next(i for i, e in enumerate(elements) if '風速' in e['ElementName'])
+    uv_index = next(i for i, e in enumerate(elements) if '紫外線指數' in e['ElementName'])
 
-    # 專門抓 value（因為 key 名不一致）
     def extract_first_value(ev):
         try:
             return int(list(ev[0].values())[0])
@@ -145,6 +145,8 @@ def get_week_summary():
     max_temps = [extract_first_value(elements[max_index]['Time'][i]['ElementValue']) for i in range(days)]
     pops = [extract_first_value(elements[pop_index]['Time'][i]['ElementValue']) for i in range(days)]
     wxs = [extract_str_value(elements[wx_index]['Time'][i]['ElementValue']) for i in range(days)]
+    wind_speeds = [extract_first_value(elements[wind_index]['Time'][i]['ElementValue']) for i in range(days)]
+    uv_indexes = [extract_first_value(elements[uv_index]['Time'][i]['ElementValue']) for i in range(days)]
 
     avg_min = sum(min_temps) / days
     avg_max = sum(max_temps) / days
@@ -153,10 +155,9 @@ def get_week_summary():
     date_start = parse_civil_date(elements[0]['Time'][0]['StartTime'])
     date_end = parse_civil_date(elements[0]['Time'][-1]['EndTime'])
 
-    desc = classify_week_weather(avg_min, avg_max, avg_pop, wxs)
+    desc = classify_week_weather(avg_min, avg_max, avg_pop, wxs, wind_speeds, uv_indexes)
 
     return f"📅 雙北本週天氣概況（{date_start}～{date_end}）\n{desc}"
-
 
 # === 工具函數 ===
 
@@ -167,7 +168,6 @@ def fetch_weather_data(location):
     print("📦 [API] 回應狀態碼：", res.status_code)
     return res.json()
 
-from dateutil import parser
 def parse_civil_date(dt_str, days_offset=0):
     try:
         dt = parser.isoparse(dt_str)
@@ -191,7 +191,7 @@ def build_suggestion(pop, min_t):
         tips.append("天氣穩定，輕便出門最適合 ☀")
     return "、".join(tips)
 
-def classify_week_weather(min_t, max_t, avg_pop, wxs):
+def classify_week_weather(min_t, max_t, avg_pop, wxs, wind_speeds, uv_indexes):
     rain_days = sum(1 for w in wxs if "雨" in w)
     result = []
 
@@ -212,6 +212,21 @@ def classify_week_weather(min_t, max_t, avg_pop, wxs):
         result.append("早晚溫差大，要注意保暖 🧥")
     elif max_t - min_t >= 10:
         result.append("日夜溫差大，注意衣物調整 🧣🧤")
+
+    max_wind = max(wind_speeds)
+    if max_wind >= 10:
+        result.append("本週有強風出現，騎車與開窗請特別小心 🌬️")
+
+    max_uv = max(uv_indexes)
+    if max_uv >= 11:
+        result.append("紫外線非常強，請避免長時間曝曬 ☀️🧴")
+    elif max_uv >= 8:
+        result.append("紫外線過量，出門請做好防曬 ☂🧢")
+    elif max_uv >= 5:
+        result.append("紫外線偏高，建議塗抹防曬乳")
+
+    if max_t >= 26 and avg_pop > 50:
+        result.append("天氣濕悶，容易引發過敏與不適，請注意室內除濕 🤧")
 
     return " ".join(result)
 
