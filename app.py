@@ -82,33 +82,60 @@ def handle_message(event):
         print("❌ [最終錯誤處理] handle_message 爆炸了！", str(e))
 
 def get_today_tomorrow_weather():
+    def determine_today_tomorrow_indexes(times):
+        """
+        根據中央氣象局 API 傳回的時間欄位，找出今天與明天的起始索引位置。
+        """
+        today = datetime.now().date()
+        tomorrow = today + timedelta(days=1)
+
+        today_index = None
+        tomorrow_index = None
+
+        for i, t in enumerate(times):
+            try:
+                dt = parser.isoparse(t['startTime']).date()
+                if dt == today and today_index is None:
+                    today_index = i
+                elif dt == tomorrow and tomorrow_index is None:
+                    tomorrow_index = i
+                if today_index is not None and tomorrow_index is not None:
+                    break
+            except:
+                continue
+
+        return today_index, tomorrow_index
+
     msg = ""
-    now = datetime.now()
     for loc in locations:
         data = fetch_weather_data(loc)
         msg += f"【{loc}】\n"
-        times = data['records']['location'][0]['weatherElement'][0]['time']
 
-        # 根據現在時間抓「今日」與「明日」的預報
-        today_index = 0
-        tomorrow_index = 2
-        today_start = parser.isoparse(times[today_index]['startTime'])
-        if today_start.date() < now.date():
-            # 如果 API 第0筆其實是昨天晚上的夜間預報，就往後推
-            today_index += 1
-            tomorrow_index += 1
+        # 找出今天與明天的索引
+        time_list = data['records']['location'][0]['weatherElement'][0]['time']
+        today_index, tomorrow_index = determine_today_tomorrow_indexes(time_list)
+
+        if today_index is None or tomorrow_index is None:
+            msg += "⚠️ 無法正確取得今日與明日的預報資料。\n\n"
+            continue
 
         for i, label in zip([today_index, tomorrow_index], ["今日", "明日"]):
-            time_data = times[i]
-            start_time = time_data['startTime']
-            date = parse_civil_date(start_time)
-            wx = time_data['parameter']['parameterName']
-            pop = int(data['records']['location'][0]['weatherElement'][1]['time'][i]['parameter']['parameterName'])
-            min_t = int(data['records']['location'][0]['weatherElement'][2]['time'][i]['parameter']['parameterName'])
-            max_t = int(data['records']['location'][0]['weatherElement'][4]['time'][i]['parameter']['parameterName'])
-            suggest = build_suggestion(pop, min_t)
-            msg += f"{label}（{date}）\n☁ 天氣：{wx}\n🌡 氣溫：{min_t}-{max_t}°C\n☔ 降雨：{pop}%\n🧾 建議：{suggest}\n\n"
+            try:
+                time_data = data['records']['location'][0]['weatherElement'][0]['time'][i]
+                start_time = time_data['startTime']
+                date = parse_civil_date(start_time)
+                wx = time_data['parameter']['parameterName']
+                pop = int(data['records']['location'][0]['weatherElement'][1]['time'][i]['parameter']['parameterName'])
+                min_t = int(data['records']['location'][0]['weatherElement'][2]['time'][i]['parameter']['parameterName'])
+                max_t = int(data['records']['location'][0]['weatherElement'][4]['time'][i]['parameter']['parameterName'])
+                suggest = build_suggestion(pop, min_t)
+
+                msg += f"{label}（{date}）\n☁ 天氣：{wx}\n🌡 氣溫：{min_t}-{max_t}°C\n☔ 降雨：{pop}%\n🧾 建議：{suggest}\n\n"
+            except Exception as e:
+                msg += f"{label}天氣資料無法取得 ❌\n\n"
+
     return msg.strip()
+
 
 
 def get_week_summary():
