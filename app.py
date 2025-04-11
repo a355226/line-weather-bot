@@ -108,21 +108,14 @@ def get_today_tomorrow_weather():
 
 def get_week_summary():
     print("🔍 [Debug] 呼叫中央氣象局 API 取得大安區一週資料")
-    url = f"https://opendata.cwa.gov.tw/api/v1/rest/datastore/F-D0047-063?Authorization={cwa_api_key}&locationName=臺北市"
+    url = f"https://opendata.cwa.gov.tw/api/v1/rest/datastore/F-D0047-063?Authorization={cwa_api_key}&locationName=大安區"
     response = requests.get(url)
     print(f"📦 [API] 回應狀態碼：{response.status_code}")
     data = response.json()
 
-    # ✅ 查臺北市時，Locations 要大寫
-    locations = data['records']['Locations'][0]['location']
-
-    # ✅ 從臺北市中找到大安區那筆
-    target = next((loc for loc in locations if loc['locationName'] == '大安區'), None)
-
-    if not target:
-        raise Exception("⚠️ 無法找到大安區資料")
-
-    elements = target['weatherElement']
+    # ✅ 這次直接查「大安區」，資料結構會簡化成：
+    # records → locations → [0] → weatherElement
+    elements = data['records']['locations'][0]['weatherElement']
 
     days = len(elements[0]['time'])
     min_temps = [int(elements[8]['time'][i]['elementValue'][0]['value']) for i in range(days)]
