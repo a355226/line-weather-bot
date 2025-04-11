@@ -82,11 +82,17 @@ def handle_message(event):
         print("❌ [最終錯誤處理] handle_message 爆炸了！", str(e))
 
 def get_today_tomorrow_weather():
+    print("🚀 進入 get_today_tomorrow_weather()", flush=True)
     msg = ""
     today = datetime.now().date()
     tomorrow = today + timedelta(days=1)
 
     for loc in locations:
+        data = fetch_weather_data(loc)
+        print(f"📍 處理地區：{loc}", flush=True)
+        print("🕒 [Debug] 全部時間欄位：", [t['startTime'] for t in data['records']['location'][0]['weatherElement'][0]['time']], flush=True)
+
+        msg += f"【{loc}】\n"
         try:
             data = fetch_weather_data(loc)
             print("🕒 [Debug] 可用時間清單：", [t['startTime'] for t in data['records']['location'][0]['weatherElement'][0]['time']])
