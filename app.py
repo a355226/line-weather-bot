@@ -140,6 +140,8 @@ def get_today_tomorrow_weather():
             msg += "今日：⚠️ 無法正確取得預報資料。\n\n"
         if not found_tomorrow:
             msg += "明日：⚠️ 無法正確取得預報資料。\n\n"
+        if "明日：⚠️ 無法正確取得預報資料。" in msg:
+    msg += "\n\n🕒 小提醒：明日天氣預報預計在凌晨 6 點後更新，請稍後再查詢 🌙"
 
     return msg.strip()
 
