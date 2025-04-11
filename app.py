@@ -119,7 +119,7 @@ def get_week_summary():
 
     elements = data['records']['Locations'][0]['Location'][0]['WeatherElement']
     for i, e in enumerate(elements):
-    print(f"🔍 Element {i}: {e['ElementName']}")
+        print(f"🔍 Element {i}: {e['ElementName']}")
     
     # 找出每個欄位的 index
     wx_index = next(i for i, e in enumerate(elements) if e['ElementName'] == '天氣現象')
