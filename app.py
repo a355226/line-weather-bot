@@ -60,6 +60,7 @@ def handle_message(event):
 
             try:
                 print("🔍 [Debug] 使用者請求雙北本週天氣概況")
+                print("🧪 [Debug] 開始處理 get_week_summary()", flush=True)
                 part2 = get_week_summary()
                 print("✅ [Debug] 一週天氣概況取得成功")
             except Exception as e2:
@@ -110,7 +111,7 @@ def get_week_summary():
     response = requests.get(url)
     print(f"📦 [API] 回應狀態碼：{response.status_code}")
     data = response.json()
-    elements = data['records']['locations'][0]['location'][0]['weatherElement']
+    elements = data['records']['Locations'][0]['location'][0]['weatherElement']
 
     days = len(elements[0]['time'])
     min_temps = [int(elements[8]['time'][i]['elementValue'][0]['value']) for i in range(days)]
