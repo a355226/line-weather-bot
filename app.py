@@ -113,7 +113,7 @@ def get_week_summary():
     print(f"📦 [API] 回應狀態碼：{response.status_code}")
     data = response.json()
 
-    locations = data['records']['Locations'][0]['location']
+    locations = data['records']['locations'][0]['location']
     target = None
     for loc in locations:
         if loc['locationName'] == '大安區':
