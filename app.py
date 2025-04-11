@@ -105,44 +105,27 @@ def get_today_tomorrow_weather():
     return msg.strip()
 
 def get_week_summary():
-    print("🔍 [Debug] 呼叫中央氣象局 API 取得台北市 12 區一週資料")
-    url = f"https://opendata.cwa.gov.tw/api/v1/rest/datastore/F-D0047-063?Authorization={cwa_api_key}&locationName=臺北市"
+    print("🔍 [Debug] 呼叫中央氣象局 API 取得大安區一週資料")
+    url = f"https://opendata.cwa.gov.tw/api/v1/rest/datastore/F-D0047-063?Authorization={cwa_api_key}&locationName=大安區"
     response = requests.get(url)
     print(f"📦 [API] 回應狀態碼：{response.status_code}")
-    print("🧾 [JSON Preview]：", response.text[:1000])  # 最多印1000字避免爆版
     data = response.json()
+    elements = data['records']['locations'][0]['location'][0]['weatherElement']
 
-    # ✅ 修正為正確 JSON 路徑
-    locations_data = data['records']['Locations'][0]['location']
+    days = len(elements[0]['time'])
+    min_temps = [int(elements[8]['time'][i]['elementValue'][0]['value']) for i in range(days)]
+    max_temps = [int(elements[8]['time'][i]['elementValue'][1]['value']) for i in range(days)]
+    pops = [int(elements[0]['time'][i]['elementValue'][0]['value']) for i in range(days)]
+    wxs = [elements[6]['time'][i]['elementValue'][0]['value'] for i in range(days)]
 
-    days = len(locations_data[0]['weatherElement'][0]['time'])
-    avg_min = [0] * days
-    avg_max = [0] * days
-    avg_pop = [0] * days
-    wx_lists = [[] for _ in range(days)]
+    avg_min = sum(min_temps) / days
+    avg_max = sum(max_temps) / days
+    avg_pop = sum(pops) / days
 
-    for loc in locations_data:
-        weathers = loc['weatherElement']
-        for i in range(days):
-            avg_min[i] += int(weathers[8]['time'][i]['elementValue'][0]['value'])
-            avg_max[i] += int(weathers[8]['time'][i]['elementValue'][1]['value'])
-            avg_pop[i] += int(weathers[0]['time'][i]['elementValue'][0]['value'])
-            wx_lists[i].append(weathers[6]['time'][i]['elementValue'][0]['value'])
+    date_start = parse_civil_date(elements[0]['time'][0]['startTime'])
+    date_end = parse_civil_date(elements[0]['time'][-1]['endTime'])
 
-    n = len(locations_data)
-    min_temps = [x // n for x in avg_min]
-    max_temps = [x // n for x in avg_max]
-    pops = [x // n for x in avg_pop]
-    wxs = [most_common(wx_lists[i]) for i in range(days)]
-
-    avg_min_all = sum(min_temps) / days
-    avg_max_all = sum(max_temps) / days
-    avg_pop_all = sum(pops) / days
-
-    date_start = parse_civil_date(locations_data[0]['weatherElement'][0]['time'][0]['startTime'])
-    date_end = parse_civil_date(locations_data[0]['weatherElement'][0]['time'][-1]['endTime'])
-
-    desc = classify_week_weather(avg_min_all, avg_max_all, avg_pop_all, wxs)
+    desc = classify_week_weather(avg_min, avg_max, avg_pop, wxs)
 
     return f"📅 雙北本週天氣概況（{date_start}～{date_end}）\n{desc}"
 
