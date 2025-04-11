@@ -27,7 +27,7 @@ def callback():
     try:
         handler.handle(body, signature)
     except Exception as e:
-        print("Webhook error:", e)
+        print("❌ [Webhook Error]", e)
         abort(400)
     return 'OK'
 
@@ -37,8 +37,14 @@ def handle_message(event):
 
     if user_msg == "天氣":
         try:
-            reply = get_today_tomorrow_weather() + "\n\n" + get_week_summary()
-        except:
+            print("🔍 [Debug] 使用者請求天氣資料")
+            part1 = get_today_tomorrow_weather()
+            print("✅ [Debug] 今日與明日天氣取得成功")
+            part2 = get_week_summary()
+            print("✅ [Debug] 一週天氣概況取得成功")
+            reply = part1 + "\n\n" + part2
+        except Exception as e:
+            print("❌ [Error] 資料讀取失敗：", str(e))
             reply = "資料讀取失敗，請稍後再試～"
     else:
         reply = (
@@ -58,6 +64,7 @@ def handle_message(event):
 # === 天氣查詢主體 ===
 
 def get_today_tomorrow_weather():
+    print("🔍 [Debug] 呼叫 fetch_weather_data() for 今日與明日")
     msg = ""
     for loc in locations:
         data = fetch_weather_data(loc)
@@ -75,6 +82,7 @@ def get_today_tomorrow_weather():
 
 def get_week_summary():
     try:
+        print("🔍 [Debug] 呼叫中央氣象局 API 取得一週資料")
         url = f"https://opendata.cwa.gov.tw/api/v1/rest/datastore/F-D0047-063?Authorization={cwa_api_key}&locationName=臺北市"
         data = requests.get(url).json()
         weathers = data['records']['locations'][0]['location'][0]['weatherElement']
@@ -93,14 +101,18 @@ def get_week_summary():
         desc = classify_week_weather(avg_min, avg_max, avg_pop, wxs)
 
         return f"📅 雙北本週天氣概況（{date_start}～{date_end}）\n{desc}"
-    except:
+    except Exception as e:
+        print("❌ [Error] get_week_summary():", str(e))
         return "⚠️ 本週天氣概況暫時無法取得～"
 
 # === 工具函數 ===
 
 def fetch_weather_data(location):
+    print(f"🌐 [API] 抓取：{location}")
     url = f"https://opendata.cwa.gov.tw/api/v1/rest/datastore/F-C0032-001?Authorization={cwa_api_key}&locationName={location}"
-    return requests.get(url).json()
+    res = requests.get(url)
+    print("📦 [API] 回應狀態碼：", res.status_code)
+    return res.json()
 
 def parse_civil_date(dt_str, days_offset=0):
     dt = datetime.strptime(dt_str, "%Y-%m-%dT%H:%M:%S") + timedelta(days=days_offset)
