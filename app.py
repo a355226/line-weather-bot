@@ -113,17 +113,14 @@ def get_week_summary():
     print(f"📦 [API] 回應狀態碼：{response.status_code}")
     data = response.json()
 
-    # ✅ 使用大寫 "Locations"（因為查的是臺北市）
+    # ✅ 查臺北市時，Locations 要大寫
     locations = data['records']['Locations'][0]['location']
 
-    target = None
-    for loc in locations:
-        if loc['locationName'] == '大安區':
-            target = loc
-            break
+    # ✅ 從臺北市中找到大安區那筆
+    target = next((loc for loc in locations if loc['locationName'] == '大安區'), None)
 
     if not target:
-        raise Exception("找不到大安區")
+        raise Exception("⚠️ 無法找到大安區資料")
 
     elements = target['weatherElement']
 
@@ -143,6 +140,7 @@ def get_week_summary():
     desc = classify_week_weather(avg_min, avg_max, avg_pop, wxs)
 
     return f"📅 雙北本週天氣概況（{date_start}～{date_end}）\n{desc}"
+
 
 # === 工具函數 ===
 
