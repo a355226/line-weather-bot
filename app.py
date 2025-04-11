@@ -114,31 +114,37 @@ def get_week_summary():
     url = f"https://opendata.cwa.gov.tw/api/v1/rest/datastore/F-D0047-063?Authorization={cwa_api_key}&locationName=臺北市"
     response = requests.get(url)
     print(f"📦 [API] 回應狀態碼：{response.status_code}")
-    
     data = response.json()
 
-    try:
-        elements = data['records']['Locations'][0]['Location'][0]['WeatherElement']
-        element_names = [e['ElementName'] for e in elements]
-        print("📄 [Debug] 可用欄位名稱：", element_names)
-    except Exception as e:
-        print("❌ [Error] 資料解析失敗，可能欄位名稱不正確：", str(e))
-        return "⚠️ 資料格式異常，無法取得本週天氣概況。"
+    elements = data['records']['Locations'][0]['Location'][0]['WeatherElement']
 
-    try:
-        wx_index = element_names.index('天氣現象')
-        pop_index = element_names.index('12小時降雨機率')
-        min_index = element_names.index('最低溫度')
-        max_index = element_names.index('最高溫度')
-    except ValueError as e:
-        print("❌ [Error] 找不到指定欄位名稱：", str(e))
-        return "⚠️ 無法解析一週天氣欄位，請檢查 API 回傳格式。"
+    available_names = [e['ElementName'] for e in elements]
+    print("📄 [Debug] 可用欄位名稱：", available_names)
+
+    # 找對應欄位的 index
+    wx_index = next(i for i, e in enumerate(elements) if '天氣現象' in e['ElementName'])
+    pop_index = next(i for i, e in enumerate(elements) if '降雨機率' in e['ElementName'])
+    min_index = next(i for i, e in enumerate(elements) if '最低溫度' in e['ElementName'])
+    max_index = next(i for i, e in enumerate(elements) if '最高溫度' in e['ElementName'])
+
+    # 專門抓 value（因為 key 名不一致）
+    def extract_first_value(ev):
+        try:
+            return int(list(ev[0].values())[0])
+        except:
+            return 0
+
+    def extract_str_value(ev):
+        try:
+            return list(ev[0].values())[0]
+        except:
+            return "?"
 
     days = len(elements[0]['Time'])
-    min_temps = [int(elements[min_index]['Time'][i]['ElementValue'][0]['Value']) for i in range(days)]
-    max_temps = [int(elements[max_index]['Time'][i]['ElementValue'][0]['Value']) for i in range(days)]
-    pops = [int(elements[pop_index]['Time'][i]['ElementValue'][0]['Value']) for i in range(days)]
-    wxs = [elements[wx_index]['Time'][i]['ElementValue'][0]['Value'] for i in range(days)]
+    min_temps = [extract_first_value(elements[min_index]['Time'][i]['ElementValue']) for i in range(days)]
+    max_temps = [extract_first_value(elements[max_index]['Time'][i]['ElementValue']) for i in range(days)]
+    pops = [extract_first_value(elements[pop_index]['Time'][i]['ElementValue']) for i in range(days)]
+    wxs = [extract_str_value(elements[wx_index]['Time'][i]['ElementValue']) for i in range(days)]
 
     avg_min = sum(min_temps) / days
     avg_max = sum(max_temps) / days
@@ -150,8 +156,6 @@ def get_week_summary():
     desc = classify_week_weather(avg_min, avg_max, avg_pop, wxs)
 
     return f"📅 雙北本週天氣概況（{date_start}～{date_end}）\n{desc}"
-
-
 
 
 # === 工具函數 ===
