@@ -112,6 +112,8 @@ def get_week_summary():
     response = requests.get(url)
     print(f"📦 [API] 回應狀態碼：{response.status_code}")
     data = response.json()
+
+    # ✅ 大寫 Locations、小寫 location
     elements = data['records']['Locations'][0]['location'][0]['weatherElement']
 
     days = len(elements[0]['time'])
