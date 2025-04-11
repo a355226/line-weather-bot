@@ -39,45 +39,47 @@ def callback():
 
 @handler.add(MessageEvent, message=TextMessageContent)
 def handle_message(event):
-    print("🟢 [Webhook Triggered] 收到來自 LINE 的訊息事件")
+    try:
+        print("🟢 [Webhook Triggered] 收到來自 LINE 的訊息事件")
+        user_msg = event.message.text.strip()
 
-    user_msg = event.message.text.strip()
+        if user_msg == "天氣":
+            part1 = ""
+            part2 = ""
+            try:
+                print("🔍 [Debug] 使用者請求今明天氣")
+                part1 = get_today_tomorrow_weather()
+                print("✅ [Debug] 今日與明日天氣取得成功")
+            except Exception as e1:
+                print("❌ [Error] get_today_tomorrow_weather()：", str(e1))
+                part1 = "⚠️ 今明天氣資料無法取得。"
 
-    if user_msg == "天氣":
-        part1 = ""
-        part2 = ""
-        try:
-            print("🔍 [Debug] 使用者請求今明天氣")
-            part1 = get_today_tomorrow_weather()
-            print("✅ [Debug] 今日與明日天氣取得成功")
-        except Exception as e1:
-            print("❌ [Error] get_today_tomorrow_weather()：", str(e1))
-            part1 = "⚠️ 今明天氣資料無法取得。"
+            try:
+                print("🔍 [Debug] 使用者請求雙北本週天氣概況")
+                part2 = get_week_summary()
+                print("✅ [Debug] 一週天氣概況取得成功")
+            except Exception as e2:
+                print("❌ [Error] get_week_summary()：", str(e2))
+                part2 = "⚠️ 雙北本週天氣概況暫時無法取得。"
 
-        try:
-            print("🔍 [Debug] 使用者請求雙北本週天氣概況")
-            part2 = get_week_summary()
-            print("✅ [Debug] 一週天氣概況取得成功")
-        except Exception as e2:
-            print("❌ [Error] get_week_summary()：", str(e2))
-            part2 = "⚠️ 雙北本週天氣概況暫時無法取得。"
-
-        reply = part1 + "\n\n" + part2
-    else:
-        reply = (
-            "🌤 歡迎使用雙北天氣機器人 ☁️\n"
-            "輸入「天氣」查詢今明預報及雙北一週天氣概況！\n"
-            "⚠️ 傳送後請稍待 1～2 分鐘取得最新資料。"
-        )
-
-    with ApiClient(configuration) as api_client:
-        MessagingApi(api_client).reply_message(
-            ReplyMessageRequest(
-                reply_token=event.reply_token,
-                messages=[TextMessage(text=reply)]
+            reply = part1 + "\n\n" + part2
+        else:
+            reply = (
+                "🌤 歡迎使用雙北天氣機器人 ☁️\n"
+                "輸入「天氣」查詢今明預報及雙北一週天氣概況！\n"
+                "⚠️ 傳送後請稍待 1～2 分鐘取得最新資料。"
             )
-        )
 
+        with ApiClient(configuration) as api_client:
+            MessagingApi(api_client).reply_message(
+                ReplyMessageRequest(
+                    reply_token=event.reply_token,
+                    messages=[TextMessage(text=reply)]
+                )
+            )
+    except Exception as e:
+        print("❌ [最終錯誤處理] handle_message 爆炸了！")
+        print("📛 [錯誤內容]：", str(e))
 
 # === 天氣查詢主體 ===
 
@@ -101,11 +103,14 @@ def get_today_tomorrow_weather():
 
 def get_week_summary():
     print("🔍 [Debug] 呼叫中央氣象局 API 取得台北市 12 區一週資料")
-    url = "https://opendata.cwa.gov.tw/api/v1/rest/datastore/F-D0047-063?Authorization=CWA-A2775CB4-B52C-47CE-8943-9570AE61D448&locationName=臺北市"
+
+    # ✅ 已填入 API 金鑰（f-string）
+    url = f"https://opendata.cwa.gov.tw/api/v1/rest/datastore/F-D0047-063?Authorization={cwa_api_key}&locationName=臺北市"
+
     response = requests.get(url)
     print(f"📦 [API] 回應狀態碼：{response.status_code}")
     data = response.json()
-    locations_data = data['records']['location']
+    locations_data = data['records']['locations'][0]['location']
 
     days = len(locations_data[0]['weatherElement'][0]['time'])
     avg_min = [0] * days
@@ -148,7 +153,11 @@ def fetch_weather_data(location):
     return res.json()
 
 def parse_civil_date(dt_str, days_offset=0):
-    dt = datetime.strptime(dt_str, "%Y-%m-%dT%H:%M:%S") + timedelta(days=days_offset)
+    try:
+        dt = datetime.strptime(dt_str, "%Y-%m-%dT%H:%M:%S")
+    except ValueError:
+        dt = datetime.strptime(dt_str, "%Y-%m-%d %H:%M:%S")
+    dt += timedelta(days=days_offset)
     roc_year = dt.year - 1911
     return f"{roc_year}/{dt.month}/{dt.day}"
 
