@@ -82,38 +82,28 @@ def handle_message(event):
         print("❌ [最終錯誤處理] handle_message 爆炸了！", str(e))
 
 def get_today_tomorrow_weather():
-    def determine_today_tomorrow_indexes(times):
-        """
-        根據中央氣象局 API 傳回的時間欄位，找出今天與明天的起始索引位置。
-        """
-        today = datetime.now().date()
-        tomorrow = today + timedelta(days=1)
-
-        today_index = None
-        tomorrow_index = None
-
+    def find_index_by_date(times, target_date):
         for i, t in enumerate(times):
             try:
                 dt = parser.isoparse(t['startTime']).date()
-                if dt == today and today_index is None:
-                    today_index = i
-                elif dt == tomorrow and tomorrow_index is None:
-                    tomorrow_index = i
-                if today_index is not None and tomorrow_index is not None:
-                    break
+                if dt == target_date:
+                    return i
             except:
                 continue
-
-        return today_index, tomorrow_index
+        return None
 
     msg = ""
     for loc in locations:
         data = fetch_weather_data(loc)
         msg += f"【{loc}】\n"
 
-        # 找出今天與明天的索引
+        # 取得所有時間資料（用第一個天氣元素當基準）
         time_list = data['records']['location'][0]['weatherElement'][0]['time']
-        today_index, tomorrow_index = determine_today_tomorrow_indexes(time_list)
+        today = datetime.now().date()
+        tomorrow = today + timedelta(days=1)
+
+        today_index = find_index_by_date(time_list, today)
+        tomorrow_index = find_index_by_date(time_list, tomorrow)
 
         if today_index is None or tomorrow_index is None:
             msg += "⚠️ 無法正確取得今日與明日的預報資料。\n\n"
@@ -135,8 +125,6 @@ def get_today_tomorrow_weather():
                 msg += f"{label}天氣資料無法取得 ❌\n\n"
 
     return msg.strip()
-
-
 
 def get_week_summary():
     url = f"https://opendata.cwa.gov.tw/api/v1/rest/datastore/F-D0047-063?Authorization={cwa_api_key}&locationName=臺北市"
