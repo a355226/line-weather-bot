@@ -22,14 +22,18 @@ def home():
 
 @app.route("/callback", methods=['POST'])
 def callback():
-    signature = request.headers['X-Line-Signature']
+    signature = request.headers.get('X-Line-Signature', '')
     body = request.get_data(as_text=True)
+
+    print("🟢 [Webhook 收到請求]")
+    print("📦 [Webhook 原始訊息]：", body)
+
     try:
         handler.handle(body, signature)
     except Exception as e:
-        print("❌ [Webhook Exception]", e)
-        print("📦 [Webhook Raw Body]：", body)
+        print("❌ [Webhook Exception]", str(e))
         abort(400)
+
     return 'OK'
 
 @handler.add(MessageEvent, message=TextMessageContent)
