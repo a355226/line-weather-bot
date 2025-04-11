@@ -85,7 +85,9 @@ def get_today_tomorrow_weather():
     msg = ""
     today = datetime.now().date()
     tomorrow = today + timedelta(days=1)
-
+    print("🕒 [Debug] 可用時間清單：", [t['startTime'] for t in data['records']['location'][0]['weatherElement'][0]['time']])
+    print("📅 [Debug] today =", today)
+    print("📅 [Debug] tomorrow =", tomorrow)
     for loc in locations:
         try:
             data = fetch_weather_data(loc)
