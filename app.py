@@ -82,66 +82,40 @@ def handle_message(event):
         print("❌ [最終錯誤處理] handle_message 爆炸了！", str(e))
 
 def get_today_tomorrow_weather():
-    print("🚀 進入 get_today_tomorrow_weather()", flush=True)
-    msg = ""
-    today = (datetime.now() + timedelta(hours=8)).date()  # 加上台灣時區
+    print("🚀 進入 get_today_tomorrow_weather()")
+    msg = "【雙北地區】\n"
+    location = "臺北市"
+    print(f"📍 處理地區：{location}")
+    data = fetch_weather_data(location)
+
+    times = data['records']['location'][0]['weatherElement'][0]['time']
+    all_datetimes = [t['startTime'] for t in times]
+    print("🕒 [Debug] 全部時間欄位：", all_datetimes)
+
+    today = datetime.now().date()
     tomorrow = today + timedelta(days=1)
+    today_str = today.strftime("%Y-%m-%d")
+    tomorrow_str = tomorrow.strftime("%Y-%m-%d")
 
-    for loc in locations:
-        data = fetch_weather_data(loc)
-        print(f"📍 處理地區：{loc}", flush=True)
-        times = data['records']['location'][0]['weatherElement'][0]['time']
-        all_start_times = [t['startTime'] for t in times]
-        print("🕒 [Debug] 全部時間欄位：", all_start_times, flush=True)
-
-        wx = data['records']['location'][0]['weatherElement'][0]['time']
-        pop = data['records']['location'][0]['weatherElement'][1]['time']
-        min_t = data['records']['location'][0]['weatherElement'][2]['time']
-        max_t = data['records']['location'][0]['weatherElement'][4]['time']
-
-        msg += f"【{loc}】\n"
-        found_today = found_tomorrow = False
-
-        for i in range(len(wx)):
-            start_str = wx[i]['startTime']
-            try:
-                dt = datetime.strptime(start_str, "%Y-%m-%d %H:%M:%S")
-            except ValueError:
-                continue
-
-            date = dt.date()
-            date_str = parse_civil_date(start_str)
-
-            if date == today and not found_today:
-                try:
-                    wx_desc = wx[i]['parameter']['parameterName']
-                    pop_val = int(pop[i]['parameter']['parameterName'])
-                    t_min = int(min_t[i]['parameter']['parameterName'])
-                    t_max = int(max_t[i]['parameter']['parameterName'])
-                    suggest = build_suggestion(pop_val, t_min)
-                    msg += f"今日（{date_str}）\n☁ 天氣：{wx_desc}\n🌡 氣溫：{t_min}-{t_max}°C\n☔ 降雨：{pop_val}%\n🧾 建議：{suggest}\n\n"
-                except:
-                    msg += "今日：⚠️ 無法正確取得預報資料。\n\n"
-                found_today = True
-
-            elif date == tomorrow and not found_tomorrow:
-                try:
-                    wx_desc = wx[i]['parameter']['parameterName']
-                    pop_val = int(pop[i]['parameter']['parameterName'])
-                    t_min = int(min_t[i]['parameter']['parameterName'])
-                    t_max = int(max_t[i]['parameter']['parameterName'])
-                    suggest = build_suggestion(pop_val, t_min)
-                    msg += f"明日（{date_str}）\n☁ 天氣：{wx_desc}\n🌡 氣溫：{t_min}-{t_max}°C\n☔ 降雨：{pop_val}%\n🧾 建議：{suggest}\n\n"
-                except:
-                    msg += "明日：⚠️ 無法正確取得預報資料。\n\n"
-                found_tomorrow = True
-
-        if not found_today:
-            msg += "今日：⚠️ 無法正確取得預報資料。\n\n"
-        if not found_tomorrow:
-            msg += "明日：⚠️ 無法正確取得預報資料。\n\n"
-        if "明日：⚠️ 無法正確取得預報資料。" in msg:
-            msg += "🕒 小提醒：明日天氣預報預計在凌晨 6 點後更新，請稍後再查詢 🌙\n\n"
+    for target_date, label in [(today_str, "今日"), (tomorrow_str, "明日")]:
+        found = False
+        for i, t in enumerate(times):
+            start = t['startTime'][:10]
+            if start == target_date:
+                wx = data['records']['location'][0]['weatherElement'][0]['time'][i]['parameter']['parameterName']
+                pop = int(data['records']['location'][0]['weatherElement'][1]['time'][i]['parameter']['parameterName'])
+                min_t = int(data['records']['location'][0]['weatherElement'][2]['time'][i]['parameter']['parameterName'])
+                max_t = int(data['records']['location'][0]['weatherElement'][4]['time'][i]['parameter']['parameterName'])
+                date = parse_civil_date(t['startTime'])
+                suggest = build_suggestion(pop, min_t)
+                msg += f"{label}（{date}）\n☁ 天氣：{wx}\n🌡 氣溫：{min_t}-{max_t}°C\n☔ 降雨：{pop}%\n🧾 建議：{suggest}\n\n"
+                found = True
+                break
+        if not found:
+            if label == "明日":
+                msg += f"{label}：⚠️ 預報尚未更新，凌晨 6 點後再查詢 🌙\n\n"
+            else:
+                msg += f"{label}：⚠️ 無法正確取得預報資料。\n\n"
 
     return msg.strip()
 
