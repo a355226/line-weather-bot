@@ -4,7 +4,7 @@ from linebot.v3.messaging import Configuration, ApiClient, MessagingApi, ReplyMe
 from linebot.v3.webhooks import MessageEvent, TextMessageContent
 import requests
 import os
-from datetime import datetime, timedelta
+import datetime
 
 # === 設定 ===
 app = Flask(__name__)
@@ -35,7 +35,6 @@ def callback():
 @handler.add(MessageEvent, message=TextMessageContent)
 def handle_message(event):
     user_msg = event.message.text.strip()
-    print("收到來自用戶：", event.source.user_id)
 
     if user_msg == "天氣":
         reply = get_today_tomorrow_weather()
@@ -44,29 +43,32 @@ def handle_message(event):
             "✅ 歡迎使用天氣提醒機器人 ☁\n"
             "──────────────\n"
             "🔔 功能介紹：\n"
-            "1️⃣ 輸入『天氣』即可查詢今明天氣資訊\n"
-            "2️⃣ 回應結果約需 1~2 分鐘，請耐心稍候 🌈\n"
+            "1️⃣ 輸入『天氣』查詢今明兩天台北與新北的天氣\n"
+            "2️⃣ 查詢結果可能需要稍候 1-2 分鐘喔\n"
             "──────────────\n"
-            "💡 快試試輸入：天氣"
+            "💡 試試輸入：天氣"
         )
 
     with ApiClient(configuration) as api_client:
-        MessagingApi(api_client).reply_message(
+        line_bot_api = MessagingApi(api_client)
+        line_bot_api.reply_message(
             ReplyMessageRequest(
                 reply_token=event.reply_token,
                 messages=[TextMessage(text=reply)]
             )
         )
 
+# === 查詢今明天氣 ===
 def get_today_tomorrow_weather():
-    msgs = []
-    for idx, label in enumerate(["今日", "明日"]):
-        date = (datetime.now() + timedelta(days=idx)).strftime("%Y/%-m/%-d")
-        for loc in locations:
-            msgs.append(get_weather(loc, idx, label, date))
+    msgs = ["✅ 你的天氣預報來囉～\n（以下為民國日期）"]
+    for loc in locations:
+        msgs.append(f"\n【{loc}】")
+        msgs.append(get_weather(loc, 0))  # 今日
+        msgs.append(get_weather(loc, 1))  # 明日
     return "\n\n".join(msgs)
 
-def get_weather(location, day_index, label, date):
+# === 取得天氣資料 ===
+def get_weather(location, day_index):
     url = f'https://opendata.cwa.gov.tw/api/v1/rest/datastore/F-C0032-001?Authorization={cwb_api_key}&locationName={location}'
     res = requests.get(url)
     data = res.json()
@@ -77,22 +79,24 @@ def get_weather(location, day_index, label, date):
     min_t = int(weather_elements[2]['time'][day_index]['parameter']['parameterName'])
     max_t = int(weather_elements[4]['time'][day_index]['parameter']['parameterName'])
 
-    rain_desc = "☀ 幾乎不會下雨"
-    if pop >= 70:
-        rain_desc = "⛈ 有明顯降雨，記得帶傘與防水裝備"
-    elif pop >= 30:
-        rain_desc = "🌧 有機會下雨，建議攜帶折傘"
+    today = datetime.datetime.today()
+    target_date = today + datetime.timedelta(days=day_index)
+    roc_date = f"{target_date.year - 1911}/{target_date.month}/{target_date.day}"
+
+    suggestion = []
+    if pop > 70:
+        suggestion.append("🌧️ 明顯降雨，請備妥雨具")
+    elif pop > 30:
+        suggestion.append("☁️ 降雨機率偏高，可備輕便雨具")
     elif pop > 10:
-        rain_desc = "🌂 降雨機率稍高，可攜帶輕便雨具"
+        suggestion.append("🌦️ 可能有短暫小雨")
+    else:
+        suggestion.append("☀️ 天氣穩定無雨")
 
-    temp_tip = "🧥 今晚偏涼，記得穿外套" if min_t < 22 else "👕 氣溫舒適，穿著輕便即可"
+    if min_t < 22:
+        suggestion.append("🧥 記得穿外套避免著涼")
 
-    return f"【{location} {label}（{convert_to_roc(date)}）】\n天氣：{wx}\n氣溫：{min_t}°C - {max_t}°C\n降雨機率：{pop}%\n{rain_desc}，{temp_tip}"
-
-def convert_to_roc(date_str):
-    parts = date_str.split('/')
-    roc_year = int(parts[0]) - 1911
-    return f"{roc_year}/{parts[1]}/{parts[2]}"
+    return f"📅 {roc_date}（{'今日' if day_index == 0 else '明日'}）\n🌤 天氣：{wx}\n🌡️ 氣溫：{min_t}°C - {max_t}°C\n🌧️ 降雨機率：{pop}%\n☂️ 建議：{'、'.join(suggestion)}"
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
