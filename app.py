@@ -109,6 +109,7 @@ def get_week_summary():
     url = f"https://opendata.cwa.gov.tw/api/v1/rest/datastore/F-D0047-063?Authorization={cwa_api_key}&locationName=臺北市"
     response = requests.get(url)
     print(f"📦 [API] 回應狀態碼：{response.status_code}")
+    print("🧾 [JSON Preview]：", response.text[:1000])  # 最多印1000字避免爆版
     data = response.json()
 
     # ✅ 修正為正確 JSON 路徑
