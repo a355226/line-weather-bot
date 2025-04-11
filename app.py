@@ -48,34 +48,35 @@ def handle_message(event):
         print("🟢 [Webhook Triggered] 收到來自 LINE 的訊息事件")
         user_msg = event.message.text.strip()
 
-        if user_msg == "天氣":
-            part1 = ""
-            part2 = ""
-            try:
-                print("🔍 [Debug] 使用者請求今明天氣")
-                part1 = get_today_tomorrow_weather()
-                print("✅ [Debug] 今日與明日天氣取得成功")
-            except Exception as e1:
-                print("❌ [Error] get_today_tomorrow_weather()：", str(e1))
-                part1 = "⚠️ 今明天氣資料無法取得。"
+if user_msg == "天氣":
+    part1 = ""
+    part2 = ""
+    try:
+        print("🔍 [Debug] 使用者請求今明天氣", flush=True)
+        part1 = get_today_tomorrow_weather()
+        print("✅ [Debug] 今日與明日天氣取得成功", flush=True)
+    except Exception as e1:
+        print("❌ [Error] get_today_tomorrow_weather()：", str(e1), flush=True)
+        part1 = "⚠️ 今明天氣資料無法取得。"
 
-        try:
-            print("🧪 [Debug] 開始處理 get_week_summary()", flush=True)
-            part2 = get_week_summary()
-            print("✅ [Debug] 一週天氣概況取得成功", flush=True)
-        except Exception as e2:
-            import traceback
-            print("❌ [Error] get_week_summary()：", str(e2), flush=True)
-            traceback.print_exc()
-            part2 = "⚠️ 雙北本週天氣概況暫時無法取得。"
+    try:
+        print("🧪 [Debug] 開始處理 get_week_summary()", flush=True)
+        part2 = get_week_summary()
+        print("✅ [Debug] 一週天氣概況取得成功", flush=True)
+    except Exception as e2:
+        import traceback
+        print("❌ [Error] get_week_summary()：", str(e2), flush=True)
+        traceback.print_exc()
+        part2 = "⚠️ 雙北本週天氣概況暫時無法取得。"
 
-            reply = part1 + "\n\n" + part2
-        else:
-            reply = (
-                "🌤 歡迎使用雙北天氣機器人 ☁️\n"
-                "輸入「天氣」查詢今明預報及雙北一週天氣概況！\n"
-                "⚠️ 傳送後請稍待 1～2 分鐘取得最新資料。"
-            )
+    reply = part1 + "\n\n" + part2
+
+else:
+    reply = (
+        "🌤 歡迎使用雙北天氣機器人 ☁️\n"
+        "輸入「天氣」查詢今明預報及雙北一週天氣概況！\n"
+        "⚠️ 傳送後請稍待 1～2 分鐘取得最新資料。"
+    )
 
         with ApiClient(configuration) as api_client:
             MessagingApi(api_client).reply_message(
