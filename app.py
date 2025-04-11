@@ -84,43 +84,65 @@ def handle_message(event):
 def get_today_tomorrow_weather():
     print("🚀 進入 get_today_tomorrow_weather()", flush=True)
     msg = ""
-    today = datetime.now().date()
+    today = (datetime.now() + timedelta(hours=8)).date()  # 加上台灣時區
     tomorrow = today + timedelta(days=1)
 
     for loc in locations:
         data = fetch_weather_data(loc)
         print(f"📍 處理地區：{loc}", flush=True)
-        print("🕒 [Debug] 全部時間欄位：", [t['startTime'] for t in data['records']['location'][0]['weatherElement'][0]['time']], flush=True)
+        times = data['records']['location'][0]['weatherElement'][0]['time']
+        all_start_times = [t['startTime'] for t in times]
+        print("🕒 [Debug] 全部時間欄位：", all_start_times, flush=True)
+
+        wx = data['records']['location'][0]['weatherElement'][0]['time']
+        pop = data['records']['location'][0]['weatherElement'][1]['time']
+        min_t = data['records']['location'][0]['weatherElement'][2]['time']
+        max_t = data['records']['location'][0]['weatherElement'][4]['time']
 
         msg += f"【{loc}】\n"
-        try:
-            data = fetch_weather_data(loc)
-            print("🕒 [Debug] 可用時間清單：", [t['startTime'] for t in data['records']['location'][0]['weatherElement'][0]['time']])
-            print("📅 [Debug] today =", today)
-            print("📅 [Debug] tomorrow =", tomorrow)
-            msg += f"【{loc}】\n"
-            times = data['records']['location'][0]['weatherElement'][0]['time']
-            today_index = next((i for i, t in enumerate(times) if parser.isoparse(t['startTime']).date() == today), None)
-            tomorrow_index = next((i for i, t in enumerate(times) if parser.isoparse(t['startTime']).date() == tomorrow), None)
+        found_today = found_tomorrow = False
 
-            def build_day(index, label):
-                if index is None:
-                    return f"{label}：⚠️ 無法正確取得預報資料。\n"
-                time_data = times[index]
-                date = parse_civil_date(time_data['startTime'])
-                wx = time_data['parameter']['parameterName']
-                pop = int(data['records']['location'][0]['weatherElement'][1]['time'][index]['parameter']['parameterName'])
-                min_t = int(data['records']['location'][0]['weatherElement'][2]['time'][index]['parameter']['parameterName'])
-                max_t = int(data['records']['location'][0]['weatherElement'][4]['time'][index]['parameter']['parameterName'])
-                suggest = build_suggestion(pop, min_t)
-                return f"{label}（{date}）\n☁ 天氣：{wx}\n🌡 氣溫：{min_t}-{max_t}°C\n☔ 降雨：{pop}%\n🧾 建議：{suggest}\n"
+        for i in range(len(wx)):
+            start_str = wx[i]['startTime']
+            try:
+                dt = datetime.strptime(start_str, "%Y-%m-%d %H:%M:%S")
+            except ValueError:
+                continue
 
-            msg += build_day(today_index, "今日") + "\n" + build_day(tomorrow_index, "明日") + "\n"
+            date = dt.date()
+            date_str = parse_civil_date(start_str)
 
-        except Exception as e:
-            msg += f"【{loc}】\n⚠️ 無法正確取得今日與明日的預報資料。\n\n"
+            if date == today and not found_today:
+                try:
+                    wx_desc = wx[i]['parameter']['parameterName']
+                    pop_val = int(pop[i]['parameter']['parameterName'])
+                    t_min = int(min_t[i]['parameter']['parameterName'])
+                    t_max = int(max_t[i]['parameter']['parameterName'])
+                    suggest = build_suggestion(pop_val, t_min)
+                    msg += f"今日（{date_str}）\n☁ 天氣：{wx_desc}\n🌡 氣溫：{t_min}-{t_max}°C\n☔ 降雨：{pop_val}%\n🧾 建議：{suggest}\n\n"
+                except:
+                    msg += "今日：⚠️ 無法正確取得預報資料。\n\n"
+                found_today = True
+
+            elif date == tomorrow and not found_tomorrow:
+                try:
+                    wx_desc = wx[i]['parameter']['parameterName']
+                    pop_val = int(pop[i]['parameter']['parameterName'])
+                    t_min = int(min_t[i]['parameter']['parameterName'])
+                    t_max = int(max_t[i]['parameter']['parameterName'])
+                    suggest = build_suggestion(pop_val, t_min)
+                    msg += f"明日（{date_str}）\n☁ 天氣：{wx_desc}\n🌡 氣溫：{t_min}-{t_max}°C\n☔ 降雨：{pop_val}%\n🧾 建議：{suggest}\n\n"
+                except:
+                    msg += "明日：⚠️ 無法正確取得預報資料。\n\n"
+                found_tomorrow = True
+
+        if not found_today:
+            msg += "今日：⚠️ 無法正確取得預報資料。\n\n"
+        if not found_tomorrow:
+            msg += "明日：⚠️ 無法正確取得預報資料。\n\n"
 
     return msg.strip()
+
 
     
 def find_index_by_date(times, target_date):
