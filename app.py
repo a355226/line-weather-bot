@@ -125,7 +125,6 @@ def get_week_summary():
     pop_index = next(i for i, e in enumerate(elements) if '降雨機率' in e['ElementName'])
     min_index = next(i for i, e in enumerate(elements) if '最低溫度' in e['ElementName'])
     max_index = next(i for i, e in enumerate(elements) if '最高溫度' in e['ElementName'])
-    wind_index = next(i for i, e in enumerate(elements) if '風速' in e['ElementName'])
     uv_index = next(i for i, e in enumerate(elements) if '紫外線指數' in e['ElementName'])
 
     def extract_first_value(ev):
@@ -140,22 +139,27 @@ def get_week_summary():
         except:
             return "?"
 
-    days = len(elements[0]['Time'])
-    min_temps = [extract_first_value(elements[min_index]['Time'][i]['ElementValue']) for i in range(days)]
-    max_temps = [extract_first_value(elements[max_index]['Time'][i]['ElementValue']) for i in range(days)]
-    pops = [extract_first_value(elements[pop_index]['Time'][i]['ElementValue']) for i in range(days)]
-    wxs = [extract_str_value(elements[wx_index]['Time'][i]['ElementValue']) for i in range(days)]
-    wind_speeds = [extract_first_value(elements[wind_index]['Time'][i]['ElementValue']) for i in range(days)]
-    uv_indexes = [extract_first_value(elements[uv_index]['Time'][i]['ElementValue']) for i in range(days)]
+    min_temps = [extract_first_value(t['ElementValue']) for t in elements[min_index]['Time']]
+    max_temps = [extract_first_value(t['ElementValue']) for t in elements[max_index]['Time']]
+    pops = [extract_first_value(t['ElementValue']) for t in elements[pop_index]['Time']]
+    wxs = [extract_str_value(t['ElementValue']) for t in elements[wx_index]['Time']]
+    uv_indexes = [extract_first_value(t['ElementValue']) for t in elements[uv_index]['Time']]
 
-    avg_min = sum(min_temps) / days
-    avg_max = sum(max_temps) / days
-    avg_pop = sum(pops) / days
+    days = min(len(min_temps), len(max_temps), len(pops), len(wxs))
+
+    avg_min = sum(min_temps[:days]) / days
+    avg_max = sum(max_temps[:days]) / days
+    avg_pop = sum(pops[:days]) / days
+    max_uv = max(uv_indexes) if uv_indexes else 0
 
     date_start = parse_civil_date(elements[0]['Time'][0]['StartTime'])
-    date_end = parse_civil_date(elements[0]['Time'][-1]['EndTime'])
+    date_end = parse_civil_date(elements[0]['Time'][days - 1]['EndTime'])
 
-    desc = classify_week_weather(avg_min, avg_max, avg_pop, wxs, wind_speeds, uv_indexes)
+    desc = classify_week_weather(avg_min, avg_max, avg_pop, wxs)
+    if max_uv >= 7:
+        desc += " 紫外線強度偏高，建議減少中午時段外出，做好防曬 ☀️🧴"
+    elif max_uv >= 5:
+        desc += " 紫外線屬中等偏強，記得補擦防曬、戴帽子 😎"
 
     return f"📅 雙北本週天氣概況（{date_start}～{date_end}）\n{desc}"
 
@@ -191,7 +195,7 @@ def build_suggestion(pop, min_t):
         tips.append("天氣穩定，輕便出門最適合 ☀")
     return "、".join(tips)
 
-def classify_week_weather(min_t, max_t, avg_pop, wxs, wind_speeds, uv_indexes):
+def classify_week_weather(min_t, max_t, avg_pop, wxs):
     rain_days = sum(1 for w in wxs if "雨" in w)
     result = []
 
@@ -212,21 +216,6 @@ def classify_week_weather(min_t, max_t, avg_pop, wxs, wind_speeds, uv_indexes):
         result.append("早晚溫差大，要注意保暖 🧥")
     elif max_t - min_t >= 10:
         result.append("日夜溫差大，注意衣物調整 🧣🧤")
-
-    max_wind = max(wind_speeds)
-    if max_wind >= 10:
-        result.append("本週有強風出現，騎車與開窗請特別小心 🌬️")
-
-    max_uv = max(uv_indexes)
-    if max_uv >= 11:
-        result.append("紫外線非常強，請避免長時間曝曬 ☀️🧴")
-    elif max_uv >= 8:
-        result.append("紫外線過量，出門請做好防曬 ☂🧢")
-    elif max_uv >= 5:
-        result.append("紫外線偏高，建議塗抹防曬乳")
-
-    if max_t >= 26 and avg_pop > 50:
-        result.append("天氣濕悶，容易引發過敏與不適，請注意室內除濕 🤧")
 
     return " ".join(result)
 
