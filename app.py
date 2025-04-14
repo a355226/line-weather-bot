@@ -20,6 +20,10 @@ locations = ['臺北市', '新北市']
 def home():
     return "Line Bot is running"
 
+@app.route("/wake", methods=["GET"])
+def wake():
+    return "👋 I'm awake!"
+
 @app.route("/callback", methods=['POST'])
 def callback():
     signature = request.headers.get('X-Line-Signature', '')
