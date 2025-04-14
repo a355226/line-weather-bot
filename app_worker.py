@@ -1,6 +1,3 @@
-import time
-import schedule
-import os
 from linebot.v3.messaging import Configuration, ApiClient, MessagingApi, PushMessageRequest, TextMessage
 from app import get_today_tomorrow_weather, get_week_summary
 
@@ -33,12 +30,5 @@ def job():
     except Exception as e:
         print("❌ [Worker Error]", str(e))
 
-# 設定排程
-schedule.every().day.at("11:00").do(job)
-schedule.every().day.at("21:00").do(job)
-
 if __name__ == "__main__":
-    print("🚀 Worker 正在執行中...")
-    while True:
-        schedule.run_pending()
-        time.sleep(1)
+    job()
