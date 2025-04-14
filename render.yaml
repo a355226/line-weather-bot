@@ -12,7 +12,7 @@ services:
     startCommand: python app_worker.py
 cronjobs:
   - name: morning-weather-push
-    schedule: "20 3 * * *"  # 台灣11:20
+    schedule: "25 3 * * *"  # 台灣11:25
     path: /push_weather
   - name: evening-weather-push
     schedule: "0 13 * * *"  # 台灣21:00
