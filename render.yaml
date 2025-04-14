@@ -1,19 +1,21 @@
 services:
   - type: web
-    name: weather-bot-web
+    name: line-weather-web
     env: python
+    plan: free
     buildCommand: pip install -r requirements.txt
     startCommand: python app.py
 
   - type: worker
-    name: weather-bot-worker
+    name: line-weather-worker
     env: python
+    plan: free
     buildCommand: pip install -r requirements.txt
     startCommand: python app_worker.py
-cronjobs:
-  - name: morning-weather-push
-    schedule: "25 3 * * *"  # 台灣11:25
-    path: /push_weather
-  - name: evening-weather-push
-    schedule: "0 13 * * *"  # 台灣21:00
-    path: /push_weather
+    cronjobs:
+      - name: morning-weather-push
+        schedule: "40 3 * * *"  # 台灣時間 11:40 AM
+        path: /push_weather
+      - name: evening-weather-push
+        schedule: "0 13 * * *"  # 台灣時間 09:00 PM
+        path: /push_weather
