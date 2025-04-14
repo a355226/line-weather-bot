@@ -47,6 +47,16 @@ def handle_message(event):
         print("🟢 [Webhook Triggered] 收到來自 LINE 的訊息事件")
         user_msg = event.message.text.strip()
 
+        if user_msg.upper() == "ID":
+    reply = f"👤 你的 LINE ID 是：\n{event.source.user_id}"
+    with ApiClient(configuration) as api_client:
+        MessagingApi(api_client).reply_message(
+            ReplyMessageRequest(
+                reply_token=event.reply_token,
+                messages=[TextMessage(text=reply)]
+            )
+        )
+    return
         if user_msg == "天氣":
             part1, part2 = "", ""
             try:
