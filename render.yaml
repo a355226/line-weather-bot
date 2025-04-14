@@ -12,10 +12,11 @@ services:
     plan: free
     buildCommand: pip install -r requirements.txt
     startCommand: python app_worker.py
-    cronjobs:
-      - name: morning-weather-push
-        schedule: "40 3 * * *"  # 台灣時間 11:40 AM
-        path: /push_weather
-      - name: evening-weather-push
-        schedule: "0 13 * * *"  # 台灣時間 09:00 PM
-        path: /push_weather
+
+cronjobs:
+  - name: morning-weather-push
+    schedule: "20 4 * * *"  # 台灣 12:20
+    path: /push_weather
+  - name: evening-weather-push
+    schedule: "0 13 * * *"  # 台灣 21:00
+    path: /push_weather
