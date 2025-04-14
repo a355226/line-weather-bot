@@ -10,3 +10,10 @@ services:
     env: python
     buildCommand: pip install -r requirements.txt
     startCommand: python app_worker.py
+cronjobs:
+  - name: morning-weather-push
+    schedule: "20 3 * * *"  # 台灣11:20
+    path: /push_weather
+  - name: evening-weather-push
+    schedule: "0 13 * * *"  # 台灣21:00
+    path: /push_weather
