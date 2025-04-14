@@ -48,15 +48,16 @@ def handle_message(event):
         user_msg = event.message.text.strip()
 
         if user_msg.upper() == "ID":
-    reply = f"👤 你的 LINE ID 是：\n{event.source.user_id}"
-    with ApiClient(configuration) as api_client:
-        MessagingApi(api_client).reply_message(
-            ReplyMessageRequest(
-                reply_token=event.reply_token,
-                messages=[TextMessage(text=reply)]
-            )
-        )
-    return
+            reply = f"👤 你的 LINE ID 是：\n{event.source.user_id}"
+            with ApiClient(configuration) as api_client:
+                MessagingApi(api_client).reply_message(
+                    ReplyMessageRequest(
+                        reply_token=event.reply_token,
+                        messages=[TextMessage(text=reply)]
+                    )
+                )
+            return
+
         if user_msg == "天氣":
             part1, part2 = "", ""
             try:
