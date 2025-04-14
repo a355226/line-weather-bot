@@ -240,21 +240,26 @@ def weekend_activity_advice(wxs, pops, times):
 
     return "🏖️ 週末活動建議：\n" + "\n".join(summary)
 
+# ✅ 天氣推播路由
+from linebot.v3.messaging.models.push_message_request import PushMessageRequest
+
 @app.route("/push_weather", methods=["GET"])
 def push_weather():
     try:
         weather_report = get_today_tomorrow_weather() + "\n\n" + get_week_summary()
         user_ids = [
-            "Uafc1366c2806bf46b2cc547d85a414d2",  # 你的 LINE 使用者 ID
-            "U2ea36514bc2b27ad282b35f8c93eda5e"   # 另一位使用者 ID
+            "Uafc1366c2806bf46b2cc547d85a414d2",  # 用戶1
+            "U2ea36514bc2b27ad282b35f8c93eda5e"   # 用戶2
         ]
 
         with ApiClient(configuration) as api_client:
             line_bot = MessagingApi(api_client)
             for uid in user_ids:
                 line_bot.push_message(
-                    to=uid,
-                    messages=[TextMessage(text=weather_report)]
+                    PushMessageRequest(
+                        to=uid,
+                        messages=[TextMessage(text=weather_report)]
+                    )
                 )
 
         print("✅ 自動推播成功")
@@ -263,7 +268,8 @@ def push_weather():
     except Exception as e:
         print("❌ 自動推播失敗：", str(e))
         return "❌ 推播錯誤：" + str(e), 500
-        
+
+      
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
