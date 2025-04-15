@@ -260,7 +260,7 @@ def push_weather():
         weather_report = get_today_tomorrow_weather() + "\n\n" + get_week_summary()
         user_ids = [
             "Uafc1366c2806bf46b2cc547d85a414d2",  # 用戶1
-            "U2ea36514bc2b27ad282b35f8c93eda5e"   # 用戶2
+            "U2ea36514bc2b27ad282b35f8c93eda5e",  # 用戶2
             "U032c453db4545c80886c46b213846e97"   # 用戶3
         ]
 
